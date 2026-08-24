@@ -45,6 +45,8 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
 | Document status table (author/reviewer/revision/date) | Professional accountability; DBP Act duty of care context |
 | Single fieldwork date reused everywhere | Prevents the contradictory-dates defect observed in a competitor sample |
 | AS 2870 class + written justification | The engineer classifies; the app never computes the standard |
+| Calculated class vs class adopted for design | AS 2870 allows a more conservative design class; the override is what a certifier checks, so it must be justified |
+| Slope stability & landslide risk (AGS 2007), optional | Required by councils with geotechnical slope guidelines; adds risk-to-property, risk-to-life, retaining parameters and the council declaration |
 | AS 4055 inputs + class, optional AS 1170.2 note | Wind class required for Class 1/10 design; the note is Abbot's refinement upsell |
 | Borehole logs with method/depth/water/profile | AS 1726 investigation records; certifier evidence |
 | Founding advice & bearing pressures | The differentiator — a report a structural engineer can act on |
@@ -83,6 +85,10 @@ PDF/A output.
 links, and automatic hold-point booking reminders.
 
 ## Housekeeping that must not regress
+
+- **Do not upload an older `index.html` over a newer one.** Commit 7048cdc (slope module +
+  classification split) was wiped by a later "Add files via upload" and had to be recovered from
+  git history. Uploading whole files through the web UI replaces, it does not merge.
 
 - **Every URL in the `sw.js` SHELL array must resolve.** `cache.addAll()` rejects on a single 404,
   which rejects the install handler, which means no offline cache at all — the one thing the app
