@@ -493,12 +493,18 @@ let db = store.get("abbot.reports") || {};      // id -> report
 let currentId = null;
 let sectionIdx = 0;
 
+/* now.toISOString().slice(0,10) reads the UTC calendar date, not the
+   engineer's local one — for any UTC+ timezone that's "yesterday" for
+   most of the working day (e.g. 8am NZST is still 8pm UTC the day
+   before). Date of issue is a local calendar date, so build it from
+   local Y/M/D components instead. */
+const localISODate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 function blank(type){
   const now = new Date();
   return {
     id: "R" + now.getTime().toString(36),
     type, created: now.toISOString(), updated: now.toISOString(), issued: null, status:"draft", submitted:null,
-    d: { jobNo:"", revision:"1", dateIssued: now.toISOString().slice(0,10),
+    d: { jobNo:"", revision:"1", dateIssued: localISODate(now),
       author:"", authorQual:"", authorReg:"", reviewer:"", reviewerQual:"", reviewerReg:"",
       client:"", careOf:"", clientPhone:"", clientEmail:"",
       projectDesc:"", street:"", suburb:"", state:"NSW", postcode:"", lotDp:"", council:"",
