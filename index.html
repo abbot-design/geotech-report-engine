@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#22303a">
+<meta name="theme-color" content="#232c74">
 <meta name="description" content="Abbot Design geotechnical report engine — field data capture and certifier-ready report generation.">
 <title>Abbot Report Engine</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -11,13 +11,25 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 /* ============================================================
-   Design tokens — "field instrument" direction.
-   Basalt chassis, limestone paper, survey-flag orange accent.
+   Design tokens — Abbot Design brand direction.
+   Navy + sky blue from the Abbot Design logo, limestone paper.
+   The old basalt chassis tone survives only as --alert, scoped
+   to the toast/notification component.
+   The report's two status-change CTAs (submit for review, issue
+   final report) get --cta, a deepened survey-flag orange, so
+   they outrank the routine blue buttons around them.
    System font stack: the app must load with zero network.
    ============================================================ */
 :root{
-  --basalt:#22303a;        /* header / chassis */
-  --basalt-deep:#16212a;
+  --navy:#2c3892;          /* Abbot Design logo navy */
+  --navy-deep:#232c74;     /* deepened navy — header / chassis */
+  --navy-deeper:#171c52;   /* further deepened — pills on chassis */
+  --sky:#50ade5;           /* Abbot Design logo light blue — decorative/large use, AA vs navy text only */
+  --sky-btn:#3e72bc;       /* deepened light blue — solid buttons w/ white text, AA 4.84:1 */
+  --sky-btn-hover:#355aa3;
+  --alert:#22303a;         /* prior chassis tone — retained for toast only */
+  --cta:#cd4200;           /* key CTAs — --flag deepened ~4% so white text clears AA (4.8:1 vs flag's 4.46:1) */
+  --cta-hover:#8f2e00;
   --paper:#f5f3ee;         /* limestone paper background */
   --card:#ffffff;
   --ink:#1c2429;
@@ -47,27 +59,32 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);l
 }
 
 /* ---------- chassis ---------- */
-header.app{background:var(--basalt);color:#fff;padding:.65rem 1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;
+header.app{background:var(--navy-deep);color:#fff;padding:.65rem 1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;
   position:sticky;top:0;z-index:7}
 header.app .mark{font-family:var(--display);font-weight:800;font-size:.82rem;letter-spacing:.08em;line-height:1.25;
   max-width:min(58vw,430px);background:transparent;border:0;margin:0;padding:.2rem;color:#fff;text-align:left;
   cursor:pointer;border-radius:6px}
 header.app .mark:hover,header.app .mark:focus-visible{background:rgba(255,255,255,.08)}
-header.app .mark span{color:#ffb38a}
+header.app .mark span{color:var(--sky)}
 header.app .ctx{font-size:.85rem;opacity:.9;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   background:transparent;border:0;color:#fff;text-align:left;padding:.3rem .2rem;min-height:0;cursor:pointer;border-radius:6px}
 header.app .ctx:hover{background:rgba(255,255,255,.08)}
-header.app .savestate{font-size:.78rem;background:var(--basalt-deep);padding:.25rem .6rem;border-radius:999px}
-header.app .helpbtn{font-size:.8rem;color:#fff;text-decoration:none;background:var(--basalt-deep);
+header.app .savestate{font-size:.78rem;background:var(--navy-deeper);padding:.25rem .6rem;border-radius:999px}
+header.app .helpbtn{font-size:.8rem;color:#fff;text-decoration:none;background:var(--navy-deeper);
   padding:.3rem .7rem;border-radius:999px;border:1px solid rgba(255,255,255,.25);white-space:nowrap}
 header.app .helpbtn:hover{background:var(--flag);border-color:var(--flag)}
 main{max-width:920px;margin:0 auto;padding:1rem 1rem 6.5rem}
 
 button{font:inherit;cursor:pointer;border-radius:var(--radius);border:1.5px solid var(--line-strong);
   background:var(--card);color:var(--ink);min-height:var(--tap);padding:.5rem 1rem}
-button:hover{border-color:var(--basalt)}
-button.primary{background:var(--flag);border-color:var(--flag);color:#fff;font-weight:600}
-button.primary:hover{background:#b93a00}
+button:hover{border-color:var(--navy)}
+button.primary{background:var(--sky-btn);border-color:var(--sky-btn);color:#fff;font-weight:600}
+button.primary:hover{background:var(--sky-btn-hover);border-color:var(--sky-btn-hover)}
+/* Key-milestone CTAs (submit for review, issue final report) get the basalt
+   tone instead of the blue used for routine actions, so the one or two
+   moments that actually change a report's status stand out from the rest. */
+button.cta,#issuebtn:not(:disabled){background:var(--cta);border-color:var(--cta);color:#fff;font-weight:700}
+button.cta:hover,#issuebtn:not(:disabled):hover{background:var(--cta-hover);border-color:var(--cta-hover)}
 button.quiet{border-color:transparent;background:transparent;color:var(--flag-ink);text-decoration:underline;text-underline-offset:3px}
 button:disabled{opacity:.45;cursor:not-allowed}
 button.danger{color:#9d1c1c;border-color:#d9a5a5}
@@ -122,8 +139,8 @@ nav.tabs button.done{background:#eaf5ef;border-color:#8fc9ae}
 nav.tabs button.done::before{content:"✓ ";color:var(--ok);font-weight:700}
 nav.tabs button.started{border-color:var(--flag);border-style:dashed}
 nav.tabs button.started::before{content:"● ";color:var(--flag);font-size:.7em;vertical-align:.15em}
-nav.tabs button[aria-current="step"]{background:var(--basalt);border-color:var(--basalt);color:#fff}
-nav.tabs button[aria-current="step"].done{background:var(--basalt);border-color:var(--ok);border-width:2px}
+nav.tabs button[aria-current="step"]{background:var(--navy);border-color:var(--navy);color:#fff}
+nav.tabs button[aria-current="step"].done{background:var(--navy);border-color:var(--ok);border-width:2px}
 nav.tabs button[aria-current="step"].done::before{color:#9fe3c0}
 nav.tabs button[aria-current="step"].started{border-color:#ffb38a;border-style:solid}
 nav.tabs button[aria-current="step"].started::before{color:#ffb38a}
@@ -135,7 +152,7 @@ nav.tabs button[aria-current="step"].started::before{color:#ffb38a}
 fieldset{border:0;border-top:2px solid var(--line);border-radius:0;background:transparent;
   padding:1rem 0 .4rem;margin:0 0 .6rem}
 fieldset:first-of-type{border-top:0;padding-top:.4rem}
-legend{font-weight:700;padding:0;margin:0 0 .7rem;font-family:var(--display);font-size:1.02rem;float:left;width:100%;letter-spacing:.01em;color:var(--basalt)}
+legend{font-weight:700;padding:0;margin:0 0 .7rem;font-family:var(--display);font-size:1.02rem;float:left;width:100%;letter-spacing:.01em;color:var(--navy)}
 legend+*{clear:both}
 .grid{display:grid;gap:.85rem 1rem;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
 .grid .wide{grid-column:1/-1}
@@ -212,7 +229,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .gaps ul{margin:.4rem 0 0;padding-left:1.2rem}
 .gaps a{color:var(--flag-ink)}
 [hidden]{display:none !important}
-.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--basalt);color:#fff;
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--alert);color:#fff;
   padding:.6rem 1.1rem;border-radius:999px;font-size:.9rem;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.25);
   display:flex;align-items:center;gap:.7rem;max-width:min(92vw,32rem)}
 .toast button.undo{min-height:32px;padding:.15rem .8rem;background:transparent;color:#fff;
@@ -225,7 +242,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 #preview{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:0}
 .rpt{font-family:var(--font);color:#111;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--display)}
-.rpt-cover{text-align:center;padding:2.4rem 1rem 2rem;border-top:10px solid var(--flag);border-bottom:6px solid var(--basalt)}
+.rpt-cover{text-align:center;padding:2.4rem 1rem 2rem;border-top:10px solid var(--navy);border-bottom:6px solid var(--sky)}
 .rpt-cover .firm{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:.14em}
 .rpt-cover .firm span{color:var(--flag)}
 .rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
@@ -234,11 +251,11 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt-cover .meta{margin-top:1.6rem;font-size:.95rem;color:#333}
 .rpt table{width:100%;border-collapse:collapse;font-size:.86rem;margin:.6rem 0 1rem}
 .rpt th,.rpt td{border:1px solid #b9b9b9;padding:.4rem .55rem;text-align:left;vertical-align:top}
-.rpt th{background:var(--basalt);color:#fff;font-weight:700;border-color:var(--basalt)}
-.rpt h2{font-size:1.14rem;font-weight:800;letter-spacing:.02em;border-left:5px solid var(--flag);padding:.15rem 0 .15rem .6rem;margin:1.7rem 0 .6rem;background:linear-gradient(to right,#f0f3f5,transparent 70%)}
+.rpt th{background:var(--navy);color:#fff;font-weight:700;border-color:var(--navy)}
+.rpt h2{font-size:1.14rem;font-weight:800;letter-spacing:.02em;border-left:5px solid var(--sky);padding:.15rem 0 .15rem .6rem;margin:1.7rem 0 .6rem;background:linear-gradient(to right,#f0f3f5,transparent 70%)}
 .rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.93rem;columns:1}
 .rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0;border-bottom:1px dotted #c9c9c9}
-.rpt .toc li b{min-width:2.2rem;color:var(--flag-ink)}
+.rpt .toc li b{min-width:2.2rem;color:var(--navy)}
 .rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333;border-bottom-color:#e2e2e2}
 .rpt .toc li.tsub b{min-width:2.4rem;color:#666;font-weight:600}
 .rpt .sigs{display:grid;grid-template-columns:1fr 1fr;gap:2.2rem;margin:1rem 0 .4rem}
@@ -256,9 +273,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt p{margin:.4rem 0;font-size:.93rem}
 .rpt .kv{display:grid;grid-template-columns:200px 1fr;font-size:.92rem;border:1px solid #b9b9b9}
 .rpt .kv>div{padding:.35rem .55rem;border-bottom:1px solid #d5d5d5}
-.rpt .kv>div:nth-child(odd){background:#e7edf1;font-weight:600;border-right:1px solid #c9d2d8;color:var(--basalt-deep)}
+.rpt .kv>div:nth-child(odd){background:#e7edf1;font-weight:600;border-right:1px solid #c9d2d8;color:var(--navy-deep)}
 .rpt .kv>div:nth-last-child(-n+2){border-bottom:0}
-.rpt .classbox{border:2px solid var(--basalt);padding:.8rem 1rem;margin:.8rem 0;display:flex;gap:1.4rem;flex-wrap:wrap}
+.rpt .classbox{border:2px solid var(--navy);padding:.8rem 1rem;margin:.8rem 0;display:flex;gap:1.4rem;flex-wrap:wrap}
 .rpt .classbox b{font-size:1.5rem;font-family:var(--display)}
 .rpt .photos{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 .rpt .photos figure{margin:0;border:1px solid #bbb;padding:.3rem}
@@ -359,7 +376,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   <p id="dlgmsg" style="margin:.2rem 0 1rem;white-space:pre-line"></p>
   <div class="inline" style="justify-content:flex-end">
     <button id="dlgno">Cancel</button>
-    <button id="dlgyes" class="primary">Confirm</button>
+    <button id="dlgyes" class="cta">Confirm</button>
   </div>
 </dialog>
 
@@ -1044,7 +1061,7 @@ review(r){ return `
    <canvas class="sigpad" data-sig="authorSig" width="430" height="130" aria-label="Author signature" role="img"></canvas>
    <div class="inline" style="margin-top:.4rem">
     <button type="button" data-clearsig="authorSig">Clear</button>
-    ${statusOf(r)==="draft"?`<button type="button" class="primary" id="submitreview">Submit for review</button>`:""}
+    ${statusOf(r)==="draft"?`<button type="button" class="cta" id="submitreview">Submit for review</button>`:""}
    </div>
    ${statusOf(r)!=="draft"?`<p class="hint">Submitted ${r.submitted?new Date(r.submitted).toLocaleDateString("en-AU"):""} — editing anything returns this report to draft.</p>`:""}
   </div>
