@@ -1,9 +1,8 @@
 // tests/ux-round.spec.js
 //
-// Regression tests for the final UI/UX round (August 2026). These lock in the
-// specific defects that round fixed, so a later edit can't quietly reinstate
-// them. Same rules as engine.spec.js: dev-only, never referenced by index.html
-// or sw.js, so it is never downloaded by anyone using the live app.
+// UI/UX regression tests. Same rules as engine.spec.js: dev-only, never
+// referenced by index.html or sw.js, so it is never downloaded by anyone
+// using the live app.
 //
 // Run with:
 //   cd tests && npm install && npx playwright install chromium && npm test
@@ -561,7 +560,7 @@ test.describe('F13 — row alignment', () => {
 });
 
 /* ------------------------------------------------------------------ *
- * R — restored work (lost when 345277b overwrote 7048cdc)             *
+ * R — classification split                                            *
  * ------------------------------------------------------------------ */
 test.describe('R — classification split', () => {
   test('design class is required and defaults are not assumed', async ({ page }) => {

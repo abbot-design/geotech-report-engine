@@ -11,24 +11,21 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 /* ============================================================
-   Design tokens — Abbot Design brand direction.
-   Navy + sky blue from the Abbot Design logo, limestone paper.
-   The old basalt chassis tone survives only as --alert, scoped
-   to the toast/notification component.
-   The report's two status-change CTAs (submit for review, issue
-   final report) get --cta, a deepened survey-flag orange, so
-   they outrank the routine blue buttons around them.
-   System font stack: the app must load with zero network.
+   Design tokens — Abbot Design brand palette.
+   Navy and sky blue from the logo, limestone paper.
+   --cta (survey-flag orange) is reserved for the two actions that
+   change a report's status: submit for review, issue final report.
+   System font stack only: the app must load with zero network.
    ============================================================ */
 :root{
-  --navy:#2c3892;          /* Abbot Design logo navy */
-  --navy-deep:#232c74;     /* deepened navy — header / chassis */
-  --navy-deeper:#171c52;   /* further deepened — pills on chassis */
-  --sky:#50ade5;           /* Abbot Design logo light blue — decorative/large use, AA vs navy text only */
-  --sky-btn:#3e72bc;       /* deepened light blue — solid buttons w/ white text, AA 4.84:1 */
+  --navy:#2c3892;          /* logo navy */
+  --navy-deep:#232c74;     /* header / chassis */
+  --navy-deeper:#171c52;   /* pills on chassis */
+  --sky:#50ade5;           /* logo sky — decorative and large use, AA vs navy text only */
+  --sky-btn:#3e72bc;       /* solid buttons w/ white text, AA 4.84:1 */
   --sky-btn-hover:#355aa3;
-  --alert:#22303a;         /* prior chassis tone — retained for toast only */
-  --cta:#cd4200;           /* key CTAs — --flag deepened ~4% so white text clears AA (4.8:1 vs flag's 4.46:1) */
+  --alert:#22303a;         /* toast background */
+  --cta:#cd4200;           /* status-change CTAs, AA 4.8:1 with white text */
   --cta-hover:#8f2e00;
   --paper:#f5f3ee;         /* limestone paper background */
   --card:#ffffff;
@@ -80,9 +77,8 @@ button{font:inherit;cursor:pointer;border-radius:var(--radius);border:1.5px soli
 button:hover{border-color:var(--navy)}
 button.primary{background:var(--sky-btn);border-color:var(--sky-btn);color:#fff;font-weight:600}
 button.primary:hover{background:var(--sky-btn-hover);border-color:var(--sky-btn-hover)}
-/* Key-milestone CTAs (submit for review, issue final report) get the basalt
-   tone instead of the blue used for routine actions, so the one or two
-   moments that actually change a report's status stand out from the rest. */
+/* The two actions that change a report's status get --cta, so they outrank
+   the routine blue buttons around them. */
 button.cta,#issuebtn:not(:disabled){background:var(--cta);border-color:var(--cta);color:#fff;font-weight:700}
 button.cta:hover,#issuebtn:not(:disabled):hover{background:var(--cta-hover);border-color:var(--cta-hover)}
 button.quiet{border-color:transparent;background:transparent;color:var(--flag-ink);text-decoration:underline;text-underline-offset:3px}
@@ -124,9 +120,7 @@ ul.reports li button svg{display:block}
 
 /* ---------- section progress ----------
    The tab rail is the progress indicator: a pill is tinted green when the
-   section is complete, outlined orange when started, plain when untouched.
-   The separate segmented bar was removed — it duplicated the rail and its
-   fixed 45% partial fill read as a rendering fault. */
+   section is complete, outlined orange when started, plain when untouched. */
 .stratalabel{font-size:.78rem;color:var(--ink-soft);padding:.1rem 0 .35rem}
 
 /* ---------- editor tabs ---------- */
@@ -146,9 +140,7 @@ nav.tabs button[aria-current="step"].started{border-color:#ffb38a;border-style:s
 nav.tabs button[aria-current="step"].started::before{color:#ffb38a}
 
 /* ---------- forms ---------- */
-/* Groups are separated by a rule and their legend, not by a bordered card.
-   Four to six nested white boxes on off-white paper carried no information and
-   ate the width the form actually needs. */
+/* Groups are separated by a rule and their legend, not by a bordered card. */
 fieldset{border:0;border-top:2px solid var(--line);border-radius:0;background:transparent;
   padding:1rem 0 .4rem;margin:0 0 .6rem}
 fieldset:first-of-type{border-top:0;padding-top:.4rem}
@@ -158,9 +150,8 @@ legend+*{clear:both}
 .grid .wide{grid-column:1/-1}
 /* label / control / hint each occupy a shared row, so every control on a row
    starts at the same y no matter how far its label wraps. */
-/* Starts a new grid row: an item explicitly placed in column 1 cannot share
-   a row whose first column is already occupied. Used to keep the address on
-   its own lines, with lot/council beginning the next. */
+/* Forces a new grid row: an item explicitly placed in column 1 cannot share
+   a row whose first column is already occupied. */
 .grid .newrow{grid-column:1}
 .pair{display:flex;gap:.7rem;align-items:start}
 .pair>div{flex:1;min-width:0}
@@ -203,8 +194,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .inline{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end}
 .inline>div{flex:1;min-width:130px}
 /* In row editors the <label> wraps its own input, so label{margin-bottom}
-   lands BELOW the field and pushes the row's cross-end down — which left the
-   ✕ button sitting 4px lower than the inputs it belongs to. */
+   would land below the field and push the row's cross-end down. */
 .rowitem .inline label{margin-bottom:0}
 .rowitem .inline>div>button{margin-bottom:0}
 .checks{display:grid;gap:.4rem;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
@@ -510,11 +500,8 @@ let db = store.get("abbot.reports") || {};      // id -> report
 let currentId = null;
 let sectionIdx = 0;
 
-/* now.toISOString().slice(0,10) reads the UTC calendar date, not the
-   engineer's local one — for any UTC+ timezone that's "yesterday" for
-   most of the working day (e.g. 8am NZST is still 8pm UTC the day
-   before). Date of issue is a local calendar date, so build it from
-   local Y/M/D components instead. */
+/* Date of issue is a local calendar date. toISOString() would report the UTC
+   date, which is the previous day for much of the working day in UTC+ zones. */
 const localISODate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 function blank(type){
   const now = new Date();
@@ -567,9 +554,8 @@ function ask(msg, yesLabel){
 function inFrame(){ try{ return window.self!==window.top; }catch(e){ return true; } }
 function note(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg;
   document.body.appendChild(t); setTimeout(()=>t.remove(),3500); }
-/* Row deletes used to be instant and irreversible — one mis-tap on a tablet in
-   the field lost a fully logged borehole. A confirm dialog on every row would be
-   intolerable in tap-heavy use, so deletes stay instant and offer an undo. */
+/* Deletes stay instant and offer an undo: a confirm dialog on every row would
+   be intolerable in tap-heavy field use. */
 let undoT;
 function noteUndo(msg, restore){
   clearTimeout(undoT);
@@ -668,10 +654,10 @@ function sectionTouched(r, secId){
   return (SECFIELDS[secId]||[]).some(k=>String(r.d[k]||"").trim()!=="");
 }
 /* A section is complete only when it has no outstanding requirements AND the
-   engineer has actually entered something. Without the second test, sections
-   that carry no requirements (Photos, Results, Review) showed a green tick on
-   a brand-new report. The issue gate itself is requirements() and is
-   unchanged — this only governs what the tabs and the count line claim. */
+   engineer has entered something — otherwise sections that carry no
+   requirements (Photos, Results, Review) would read as complete on a new
+   report. Governs the tabs and count line only; the issue gate is
+   requirements(). */
 function sectionState(r, secId){
   const gaps = requirements(r).filter(g=>g.sec===secId);
   return gaps.length===0 && sectionTouched(r, secId);
@@ -688,7 +674,7 @@ function show(view){
 }
 
 /* Line icons rather than emoji: emoji render differently on every platform and
-   at unpredictable weights next to text buttons. */
+   at unpredictable weights next to text. */
 const ICON_EXPORT = `<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor"
   stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
   <path d="M10 13V3"/><path d="M6.5 6.5 10 3l3.5 3.5"/><path d="M3.5 13v3.5h13V13"/></svg>`;
@@ -697,12 +683,9 @@ const ICON_DELETE = `<svg viewBox="0 0 20 20" width="18" height="18" fill="none"
   <path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg>`;
 
 /* ---------- home ---------- */
-/* The client is what an engineer actually recalls when scanning this list —
-   job numbers and, for a multi-lot subdivision, even street addresses often
-   don't exist yet. Lead with the client, then the most specific site
-   identifier available: a street address once one exists, otherwise the
-   Lot & DP (which, unlike the address, is normally known from day one and is
-   how classification jobs are distinguished before addressing happens). */
+/* The most specific site identifier available: a street address once one
+   exists, otherwise the Lot & DP, which is known from day one on
+   classification jobs and is how they are told apart before addressing. */
 function siteLabel(d){
   if(d.street) return d.suburb ? `${d.street}, ${d.suburb}` : d.street;
   if(d.lotDp) return d.lotDp;
@@ -710,7 +693,7 @@ function siteLabel(d){
 }
 function renderHome(){
   /* The header context doubles as "back to all reports"; on the list itself it
-     has nothing to say and nowhere to go, so it is hidden rather than empty. */
+     has nowhere to go, so it is hidden rather than empty. */
   $("ctx").textContent = ""; $("ctx").hidden = true;
   const list = $("reportlist"); list.innerHTML = "";
   const items = Object.values(db).sort((a,b)=>b.updated.localeCompare(a.updated));
@@ -736,8 +719,8 @@ function renderTabs(opts){
   const scroll = !opts || opts.scroll !== false;
   const secs = visibleSections();
   const rail = $("tabrail");
-  /* Rebuilding the rail resets scrollLeft. On a live refresh (typing) that
-     yanked the pills back to the start mid-keystroke, so hold the position. */
+  /* Rebuilding the rail resets scrollLeft, so hold the position on refreshes
+     that are not navigation and the pills don't jump mid-keystroke. */
   const keepScroll = scroll ? null : rail.scrollLeft;
   rail.innerHTML="";
   secs.forEach((s,i)=>{
@@ -751,9 +734,8 @@ function renderTabs(opts){
   });
   const cur = rail.querySelector('[aria-current="step"]');
   if(scroll && cur){
-    /* Scroll the rail itself, horizontally only. scrollIntoView would also move
-       the page vertically to satisfy block:"nearest", which fights the
-       scroll-to-top that navigation performs. */
+    /* Scroll the rail horizontally only. scrollIntoView would also move the page
+       vertically, fighting the scroll-to-top that navigation performs. */
     const target = Math.max(0, cur.offsetLeft - (rail.clientWidth - cur.offsetWidth)/2);
     if(rail.scrollTo) rail.scrollTo({left:target,
       behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
@@ -774,18 +756,14 @@ function renderTabs(opts){
 }
 
 /* field helpers */
-/* Two short fields that belong together share one grid cell, so neither is
-   stranded in a column of its own. */
+/* Two short fields that belong together share one grid cell. */
 function pair(a,b){ return `<div class="pair">${a}${b}</div>`; }
 function F(key,label,opts={}){
   const d=report().d, t=opts.type||"text";
-  /* One marker only: required. Everything unmarked is optional, so the form
-     stops carrying two kinds of parenthetical noise on every field. */
+  /* Required is the only marker; everything unmarked is optional. */
   const req = opts.req?` <span class="reqmark">Required to issue</span>`:"";
   const ac = opts.ac?` autocomplete="${opts.ac}"`:"";
   const im = opts.im?` inputmode="${opts.im}"`:"";
-  /* Format examples live in the placeholder, not in a hint line below the
-     field: same guidance, one less line of standing text per field. */
   const ph = opts.ph?` placeholder="${esc(opts.ph)}"`:"";
   const cls = `${opts.wide?"wide":""}${opts.narrow?" narrow":""}${opts.newrow?" newrow":""}`;
   if(t==="textarea") return `<div class="${cls}"><label for="f_${key}">${label}${req}</label>
@@ -1259,9 +1237,6 @@ function renderReviewGaps(){
        <p class="hint">A PDF generated now carries a DRAFT watermark.</p></div>`;
 }
 
-/* opts.focus === false for re-renders that are NOT navigation (adding a photo,
-   switching report type, submitting for review). Those used to fling focus back
-   to the top of the form and lose the engineer's place. */
 /* Marks required-but-empty fields the engineer has already visited. Runs on
    blur and after each render, so nothing is flagged before it has been reached. */
 function markNeeded(){
@@ -1281,8 +1256,9 @@ document.addEventListener("blur", e=>{
 
 function renderEditor(opts){
   /* A navigation render (Next/Back, a tab, a gap link) starts the new section
-     at the top — the engineer works down it. A non-navigation re-render
-     (adding a photo, changing report type) must leave the page where it is. */
+     at the top and focuses its first control. Pass {focus:false} for re-renders
+     that are not navigation (adding a photo, changing report type, submitting
+     for review) so the page stays where it is. */
   const isNav = !opts || opts.focus !== false;
   const focusFirst = isNav;
   renderTabs();
@@ -1813,9 +1789,8 @@ document.addEventListener("click",e=>{
   if(t.dataset.goto){ e.preventDefault(); sectionIdx=visibleSections().findIndex(s=>s.id===t.dataset.goto); show("editor"); renderEditor(); }
 });
 
-/* Section state used to refresh only on navigation, so the tabs and the count
-   line stayed stale while the engineer typed — the indicator looked frozen.
-   Debounced so a long free-text answer doesn't rebuild the rail per keystroke. */
+/* Section state refreshes as the engineer types, debounced so a long free-text
+   answer doesn't rebuild the rail on every keystroke. */
 let tabsT;
 function refreshTabsSoon(){ clearTimeout(tabsT);
   tabsT = setTimeout(()=>{ if(report() && !$("view-editor").hidden) renderTabs({scroll:false}); }, 250); }
@@ -1864,10 +1839,9 @@ function onFieldEdit(e){
   if(el.id==="sitefigcap"){ r.siteFigureCap=el.value; saveDb(); }
   refreshTabsSoon();
 }
-/* Bound to BOTH events on purpose. Autofill, and <select>/<input type=date> on
-   some platforms, fire "change" without "input"; binding only "input" silently
-   dropped those edits. Re-running on both is idempotent — it assigns the same
-   value twice. Do not "tidy" this back to a single listener. */
+/* Bound to BOTH events on purpose: autofill, and <select>/<input type=date> on
+   some platforms, fire "change" without "input". Re-running on both is
+   idempotent. Do not "tidy" this back to a single listener. */
 document.addEventListener("input", onFieldEdit);
 document.addEventListener("change", onFieldEdit);
 document.addEventListener("change",e=>{
