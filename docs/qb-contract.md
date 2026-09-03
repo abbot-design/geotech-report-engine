@@ -1,0 +1,226 @@
+# Quickbase → Report Engine prefill contract
+
+**Version 1.** This document is the agreement between two systems that do not talk to each other
+any other way. If you are picking this up cold, read this page first — it is the only place both
+halves are written down.
+
+- **Quickbase** (`ryanchalmers.quickbase.com`, app `bkhasky43`) is the system of record.
+- **The Report Engine** is a static offline PWA. It has no server, no database and no login.
+- A **Formula-URL button** in Quickbase opens the engine with job details already filled in.
+
+**There is no API call anywhere in this design.** No user token, no app token, no backend. The
+button is a plain external `https://` link, so the app's *Require Application Tokens* setting does
+not affect it and should stay switched on.
+
+---
+
+## How the payload travels
+
+The data rides in the **URL fragment** — the part after `#`:
+
+```
+https://clairethetester.github.io/abbot-geotech-report-engine/#qb=1&cl=Smith&ld=Lot%2012%20DP%201234567
+```
+
+**A fragment is never transmitted to the server.** It does not reach GitHub, appear in any access
+log, or leak through a `Referer` header. The engine also scrubs it from the address bar with
+`history.replaceState()` before the first render, so it does not persist in history or a bookmark.
+
+This is why the payload must **never** be moved into the query string (`?cl=…`), which *is* sent to
+the server and *does* get logged.
+
+### Why not send just a record ID and fetch the rest?
+
+Because the engine has no login. An endpoint that returns project details for any record ID would
+be an unauthenticated read of Abbot's CRM — strictly worse than a link containing details the
+person clicking it is already looking at. The button only renders on records the user can already
+see, and it grants no access to anything else.
+
+Once the engine has authentication (Supabase, the repo's Phase 2), switch to reference-only prefill.
+**Identity first, then reference-only** — the other order is the insecure one.
+
+---
+
+## The payload
+
+Percent-encoded `key=value` pairs, `&`-separated, after `#`. Chosen over base64 JSON because
+formula-string escaping is the fiddliest part of Quickbase and this avoids it entirely.
+
+`qb=1` must come first. It is the **encoding** version — bump it only if the encoding itself changes
+(e.g. moving to base64). **Adding or removing fields never requires a version bump.**
+
+### Field map
+
+| Key | → engine `report.d` | Source | Field ID | Fill |
+|---|---|---|---|---|
+| `rid` | *(→ `report.source.recordId`)* | Geotech Reports · Record ID# | 3 | — |
+| `ty` | *(→ `report.type`)* | Geotech Reports · Report Type | — | — |
+| `jn` | `jobNo` | Geotech Reports · Job No | — | — |
+| `cl` | `client` | Projects · `Customer` *(lookup)* | 10 | 100% |
+| `co` | `careOf` | Projects · `Customer Contact` *(lookup)* | 24 | 99% |
+| `pd` | `projectDesc` | Projects · `Project Detail` *(lookup)* | 9 | 93% |
+| `st` | `street` | Geotech Reports · Street, falling back to Projects · `Project Address` | 28 | 97% |
+| `sb` | `suburb` | Geotech Reports · Suburb | — | — |
+| `sa` | `state` | Geotech Reports · State | — | — |
+| `pc` | `postcode` | Geotech Reports · Postcode | — | — |
+| `ld` | `lotDp` | Geotech Reports · Lot and DP | — | — |
+| `cc` | `council` | Geotech Reports · Council | — | — |
+| `au` | `author` | Geotech Reports · Author | — | — |
+
+`ty` must be one of `desktop`, `classification`, `comprehensive`. Anything else falls back to
+`classification`.
+
+**Deliberately omitted: `cp` (client phone) and `ce` (client email).** The engine *can* receive them
+— they are in `PREFILL_MAP` — but the default formula does not send them, because the report cover
+does not need them and they are the most sensitive values available. Add them to the formula only
+if Abbot decides it wants them.
+
+### What Quickbase cannot supply
+
+Measured across all 7,079 project records. These have **no source field in Quickbase** and the
+engineer must always enter them:
+
+`reviewer` · author/reviewer qualifications · registration numbers · `slopeDeg` · `geologyUnit` ·
+`siteClass` · everything from fieldwork onward.
+
+Before the Geotech Reports table existed, `lotDp`, `suburb`, `state`, `postcode` and `council` were
+also unavailable — **that table is what makes this integration worth building.**
+
+### Do not parse `Project Address`
+
+Projects' `Project Address` (fid 28) is one free-text field. Only **28% contain a postcode** and
+**40% a state**. Real values range from `1341 DANDENONG ROAD, MALVERN EAST VIC 3141` to
+`Corner of Boundary Rd and, Hume Hwy, Liverpool NSW 2170` to just `Myer Sydney`.
+
+It is passed through into `street` unchanged as a typing head-start when the geotech Street field is
+empty. **Never write code that splits it into street/suburb/state/postcode.** It would be guesswork
+and would be the most fragile thing in the system.
+
+---
+
+## The Quickbase side
+
+### Geotech Reports table (child of Projects)
+
+**Feeds the button** — entered in Quickbase:
+
+| Field | Type |
+|---|---|
+| Report Type | Text - Multiple Choice: `desktop`, `classification`, `comprehensive` |
+| Job No | Text |
+| Street | Text |
+| Suburb | Text |
+| State | Text - Multiple Choice, default `NSW` |
+| Postcode | Text |
+| Lot and DP | Text |
+| Council | Text |
+| Author | Text |
+
+**Record-keeping** — filled after the report is issued (by hand for now; by write-back later):
+
+| Field | Type |
+|---|---|
+| Report ID | Text — the engine's `r.id`, shown on the report |
+| Status | Text - Multiple Choice: Draft / In review / Issued |
+| Date Issued | Date |
+| Site Class | Text - Multiple Choice: A, S, M, M-D, H1, H1-D, H2, H2-D, E, E-D, P |
+| Report PDF | File Attachment |
+
+**Lookups from Projects** so nothing is re-typed: `Customer` (10), `Customer Contact` (24),
+`Project Detail` (9), `Project Address` (28).
+
+> ⚠️ **Verify the lookups actually resolve in the Quickbase UI before wiring the formula to them.**
+> `Related Customer` (fid 14) and `Customer - Email` (fid 16) on Projects came back 0% populated in
+> a CSV export — Quickbase exports do not always carry lookup values, so that may be an export
+> artifact rather than empty data. Check in the UI; do not assume either way.
+
+Field names above avoid `&` and `/` (hence `Lot and DP`, not `Lot & DP`) purely to keep the formula
+free of escaping doubt.
+
+### The Formula-URL field
+
+Create a **Formula - URL** field named `Send to Report Engine`, tick **Display as a button**, and
+restrict it by role to staff who start geotech reports.
+
+```
+var text BASE = "https://clairethetester.github.io/abbot-geotech-report-engine/";
+
+var text P =
+    "#qb=1"
+  & "&rid=" & URLEncode(ToText([Record ID#]))
+  & "&ty="  & URLEncode([Report Type])
+  & "&jn="  & URLEncode([Job No])
+  & "&cl="  & URLEncode([Project - Customer])
+  & "&co="  & URLEncode([Project - Customer Contact])
+  & "&pd="  & URLEncode([Project - Project Detail])
+  & "&st="  & URLEncode(If(Trim([Street]) = "", [Project - Project Address], [Street]))
+  & "&sb="  & URLEncode([Suburb])
+  & "&sa="  & URLEncode([State])
+  & "&pc="  & URLEncode([Postcode])
+  & "&ld="  & URLEncode([Lot and DP])
+  & "&cc="  & URLEncode([Council])
+  & "&au="  & URLEncode([Author]);
+
+$BASE & $P
+```
+
+Adjust the lookup field names (`[Project - Customer]` etc.) to match whatever Quickbase actually
+named them when the lookups were created.
+
+Empty values are harmless — the engine ignores any key whose value is blank.
+
+---
+
+## Cross-device: where the report ends up
+
+**Clicking the button puts the report on the device that clicked it, and nowhere else.** The engine
+stores reports in that browser's `localStorage`; there is no sync.
+
+1. **Normal use — click it on the device that will do the work.** The engineer opens Quickbase on
+   the iPad, taps the button, and the engine opens prefilled on the iPad. Needs signal at that
+   moment; everything afterwards works offline.
+2. **Desktop → iPad — use "Send to another device".** The engine renders the same payload as a QR
+   code, drawn locally (the QR library is vendored in `vendor/`, nothing is sent to any service).
+   Scan it with the iPad camera.
+3. **Not solved: the return trip.** A finished report still gets back to the office as a `.json`
+   export. That needs Supabase.
+
+### ⚠️ Known data-loss risk
+
+Since iOS 13.4, WebKit clears `localStorage` after **7 days without interaction with the site**.
+Home-screen PWAs were originally exempt; that exemption was removed. **An in-progress report on an
+iPad left for a week can vanish.**
+
+Accepted for now. **The process mitigation is to export a `.json` backup as soon as a report has
+real data.** Fixing it properly means Supabase.
+
+---
+
+## When something drifts
+
+There is no scheduled maintenance and no one running scripts. Drift is caught by two things:
+
+**1. The engine reports it to the engineer.** Only keys present in `blank()` are applied; anything
+else is counted and named in the banner that appears when a prefilled report opens. If Quickbase
+stops sending a field, the payload simply lacks that key and the banner says what is still needed —
+in front of the person who can fix it, at the moment they can fix it. Nothing fails silently.
+
+**2. The Playwright spec** (`tests/prefill.spec.js`) asserts the canonical payload lands in every
+field. If a `report.d` key is renamed in `index.html`, it goes red. **This is the only automated
+guard in the system — do not delete it.**
+
+| Change in Quickbase | Breaks? | Caught by |
+|---|---|---|
+| Field renamed | No — Quickbase references fields by ID | n/a |
+| Field deleted | Yes, loudly — the formula errors in Quickbase | Quickbase itself |
+| Field added | No | n/a |
+| Field repurposed | Yes, silently | **Nothing.** Residual risk |
+| Engine `report.d` key renamed | Yes | The Playwright spec |
+
+### Editing the map
+
+`PREFILL_MAP` in `index.html` is the **only** place the engine-side mapping lives. There is
+deliberately no admin UI: this changes perhaps twice a year, and an admin UI would be a whole
+product — auth, storage, validation — to replace a 13-line object.
+
+Change the map, change this document, run the tests.

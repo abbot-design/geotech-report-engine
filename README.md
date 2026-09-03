@@ -32,8 +32,12 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
   requirement is met and the report is formally issued with a named reviewer.
 - **PDF via the browser print engine** (File → Print → Save as PDF) — works on iOS, Android,
   Windows, macOS and Linux with no dependencies; A4 print stylesheet included.
-- **Export / import (.json)** for device-to-device transfer and office review; also the future
-  integration point for quote-system prefill (`report.source` is reserved for it).
+- **Export / import (.json)** for device-to-device transfer and office review.
+- **Quickbase prefill**: a Formula-URL button in Abbot Design's Quickbase app opens the engine with
+  the client and site details already filled in, carried in the URL fragment — no API, no token and
+  no backend. Provenance lands in `report.source`. **Contract: `docs/qb-contract.md`.**
+- **Send to another device**: renders the same payload as a QR code, drawn locally from the
+  vendored library in `vendor/` so nothing is sent to a third party. Job details only, not photos.
 - **Autosave** on every input to device storage, with a graceful in-memory fallback and a visible
   warning where storage is unavailable.
 
@@ -81,8 +85,10 @@ per report type versioned in a table.
 **Phase 3 — output fidelity:** merge uploaded PDF attachments (lab/DCP reports) into the issued document server-side; vendor pdf.js so PDF attachments can render as embedded pages offline; server-side PDF render (headless Chromium via a free-tier worker)
 for pixel-identical letterhead, page headers/footers with job number on every page, and archival
 PDF/A output.
-**Phase 4 — intake integration:** quote/CRM prefill into `report.source`, client portal delivery
-links, and automatic hold-point booking reminders.
+**Phase 4 — intake integration:** ~~quote/CRM prefill into `report.source`~~ **done — see
+`docs/qb-contract.md`**; still to come: write-back of the issued PDF into Quickbase (needs a
+serverless hop, as `api.quickbase.com` sends no CORS headers to other origins), client portal
+delivery links, and automatic hold-point booking reminders.
 
 ## Housekeeping that must not regress
 
@@ -94,13 +100,26 @@ links, and automatic hold-point booking reminders.
   which rejects the install handler, which means no offline cache at all — the one thing the app
   exists to do. `tests/ux-round.spec.js` checks this on every run.
 - **Bump `CACHE` in `sw.js` on every deploy**, or installed apps keep serving the old shell.
+- **`tests/prefill.spec.js` is the only automated guard on the Quickbase contract.** There is no
+  schema-checking script and no active maintainer for the integration, so if a `report.d` key is
+  renamed, that spec is what catches it. Update it and `docs/qb-contract.md` in the same commit as
+  any change to `PREFILL_MAP`.
+- **The prefill payload must stay in the URL *fragment*, never the query string.** A fragment is
+  never sent to the server; a query string is, and would put client names and addresses into
+  GitHub's access logs. It is scrubbed with `history.replaceState()` before the first render.
+
 - **Field binding is registered on both `input` and `change`.** Autofill, and `<select>` /
   `<input type=date>` on some platforms, fire `change` without `input`. Do not collapse this back
   to a single listener.
 
 ## Known MVP limits (deliberate)
 
-- Data lives on one device until exported (Phase 2 fixes).
+- Data lives on one device until exported (Phase 2 fixes). A Quickbase link opens the job on
+  whichever device clicked it — engineers click it on the tablet they will work on, or hand it over
+  with **Send to another device**.
+- **iOS clears `localStorage` after 7 days without opening the app** (WebKit policy; home-screen
+  PWAs are no longer exempt). An in-progress report left for a week can be lost. Until Phase 2,
+  export a .json backup as soon as a report has real data.
 - Print headers/footers per page depend on the browser (Phase 3 fixes).
 - No authentication — do not store sensitive client data on shared devices.
 - The app structures standards *inputs* but never computes AS 2870/AS 4055 outcomes: engineering
