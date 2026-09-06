@@ -222,3 +222,62 @@ test.describe('Device handoff QR', () => {
     expect(external, 'the app must make no third-party requests').toEqual([]);
   });
 });
+
+// The Quickbase table and button may not exist yet, and the engine is used
+// standalone regardless. Nothing added for the integration may affect that.
+test.describe('inert when the Quickbase side does not exist', () => {
+
+  test('ordinary launch is completely unaffected', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/index.html');
+    await page.waitForSelector('#view-home:not([hidden])');
+    await expect(page.locator('#prefillbar')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('a report created by hand still works end to end', async ({ page }) => {
+    await page.goto('/index.html');
+    await page.click('button[data-newtype="classification"]');
+    await page.waitForSelector('#view-editor:not([hidden])');
+    await page.fill('#f_jobNo', 'AD-MANUAL-1');
+    await page.click('#tabrail button:text-is("Client & site ID")');
+    await page.fill('#f_client', 'Hand Typed Client');
+    await page.click('#previewbtn');
+    await expect(page.locator('#rpt')).toContainText('Hand Typed Client');
+    const src = await page.evaluate(() => report().source);
+    expect(src).toBeNull();
+  });
+
+  test('a report saved before this change still opens', async ({ page }) => {
+    await page.goto('/index.html');
+    // A report with no `source` key at all, as pre-existing saved data has.
+    await page.evaluate(() => {
+      const r = blank('classification');
+      delete r.source;
+      r.d.client = 'Legacy Report';
+      db[r.id] = r; saveDb(); renderHome();
+    });
+    await page.reload();
+    await page.waitForSelector('#view-home:not([hidden])');
+    await page.click('ul.reports li button[data-open]');
+    await page.waitForSelector('#view-editor:not([hidden])');
+    const client = await page.evaluate(() => report().d.client);
+    expect(client).toBe('Legacy Report');
+  });
+
+  test('the app survives the QR library failing to load', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.route('**/vendor/qrcode.min.js', r => r.abort());
+    await page.goto('/index.html');
+    await page.click('button[data-newtype="classification"]');
+    await page.waitForSelector('#view-editor:not([hidden])');
+    await page.click('#tabrail button:text-is("Review & issue")');
+    await page.click('#qrthis');
+    // Degrades to a message, does not throw and does not open an empty dialog.
+    await expect(page.locator('.toast')).toContainText('Export');
+    await expect(page.locator('#qrdlg')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+});
