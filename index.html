@@ -608,7 +608,9 @@ function applyPrefill(p){
   for(const [k,v] of Object.entries(p.d)){
     if(!(k in r.d)){ rejected.push(k); continue; }
     if(v==null || v==="") continue;
-    r.d[k] = v; applied++;
+    /* Quickbase multi-line text arrives CRLF; nl() only converts \n, so a
+       stray \r would survive into the rendered document. */
+    r.d[k] = String(v).replace(/\r\n?/g, "\n"); applied++;
   }
   r.source = { system:"quickbase", app:"bkhasky43",
                recordId: p.recordId || null, receivedAt: new Date().toISOString() };
@@ -961,11 +963,15 @@ setup(r){ return `
 <fieldset><legend>Responsibility</legend>
  <div class="grid">
   ${F("author","Author — engineer",{req:1,ac:"name"})}
-  ${F("authorQual","Author qualifications",{ph:"BEng (Civil) MIEAust CPEng"})}
-  ${F("authorReg","Author registration no.",{ph:"NSW DBP PE / NER / CPEng"})}
+  ${F("authorQual","Author qualifications",{ph:"CPEng, NER, 3826369"})}
+  ${F("authorReg","Author registrations",{type:"textarea",wide:1,
+     ph:"NSW & TAS BDC3431\nVIC PE0000408\nQLD RPEQ 21681",
+     hint:"One line per state registration."})}
   ${F("reviewer","Reviewer",{req:1})}
-  ${F("reviewerQual","Reviewer qualifications",{ph:"BEng (Civil) MIEAust CPEng"})}
-  ${F("reviewerReg","Reviewer registration no.",{ph:"NSW DBP PE / NER / CPEng"})}
+  ${F("reviewerQual","Reviewer qualifications",{ph:"CPEng, NER, 3826369"})}
+  ${F("reviewerReg","Reviewer registrations",{type:"textarea",wide:1,
+     ph:"NSW & TAS BDC3431\nVIC PE0000408\nQLD RPEQ 21681",
+     hint:"One line per state registration."})}
  </div>
 </fieldset>`; },
 
@@ -1596,11 +1602,13 @@ function buildReport(){
     <div class="sigs">
       <div class="sig">${d.authorSig?`<img class="sigimg" src="${d.authorSig}" alt="Signature of ${esc(d.author)}">`:`<div class="line"></div>`}
         <p><b>${esc(d.author)||"—"}</b> ${d.authorQual?esc(d.authorQual):""}</p>
-        <p>Author${d.authorReg?` · Registration ${esc(d.authorReg)}`:""}</p>
+        ${d.authorReg?`<p>${nl(d.authorReg)}</p>`:""}
+        <p>Author</p>
         <p>Date: ${dt(d.dateIssued)}</p></div>
       <div class="sig">${d.reviewerSig?`<img class="sigimg" src="${d.reviewerSig}" alt="Signature of ${esc(d.reviewer)}">`:`<div class="line"></div>`}
         <p><b>${esc(d.reviewer)||"—"}</b> ${d.reviewerQual?esc(d.reviewerQual):""}</p>
-        <p>Reviewer${d.reviewerReg?` · Registration ${esc(d.reviewerReg)}`:""}</p>
+        ${d.reviewerReg?`<p>${nl(d.reviewerReg)}</p>`:""}
+        <p>Reviewer</p>
         <p>Date: ${dt(d.dateIssued)}</p></div>
     </div>`);
 
@@ -1730,9 +1738,9 @@ function buildReport(){
    <tr><th style="width:12%">Version</th><th>Author</th><th>Reviewer — approved for issue</th><th style="width:16%">Date</th><th style="width:14%">Status</th></tr>
    <tr><td>${esc(d.revision)}</td>
        <td style="text-align:center">${d.authorSig?`<img class="tblsig" src="${d.authorSig}" alt="Signature of ${esc(d.author)}">`:""}
-           ${esc(d.author)}<br><small>${esc(d.authorQual)}</small>${d.authorReg?`<br><small>Reg: ${esc(d.authorReg)}</small>`:""}</td>
+           ${esc(d.author)}<br><small>${esc(d.authorQual)}</small>${d.authorReg?`<br><small>${nl(d.authorReg)}</small>`:""}</td>
        <td style="text-align:center">${d.reviewerSig?`<img class="tblsig" src="${d.reviewerSig}" alt="Signature of ${esc(d.reviewer)}">`:""}
-           ${esc(d.reviewer)}<br><small>${esc(d.reviewerQual)}</small>${d.reviewerReg?`<br><small>Reg: ${esc(d.reviewerReg)}</small>`:""}</td>
+           ${esc(d.reviewer)}<br><small>${esc(d.reviewerQual)}</small>${d.reviewerReg?`<br><small>${nl(d.reviewerReg)}</small>`:""}</td>
        <td>${dt(d.dateIssued)}</td><td>${r.issued?`Issued ${new Date(r.issued).toLocaleDateString("en-AU")}`:"DRAFT"}</td></tr></table>
   ${(d.dist&&d.dist.length)?`<h3>Document distribution</h3>
   <table><tr><th>To</th><th style="width:22%">Format</th><th style="width:18%">Date</th></tr>

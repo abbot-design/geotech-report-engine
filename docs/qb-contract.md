@@ -69,10 +69,15 @@ formula-string escaping is the fiddliest part of Quickbase and this avoids it en
 | `cc` | `council` | Geotech Reports · Council | — | — |
 | `au` | `author` | Staff Details · `Name`, via the Author relationship | 6 | — |
 | `aq` | `authorQual` | Staff Details · `Qualifications` *(new field)* | — | — |
-| `ar` | `authorReg` | Staff Details · `Registration No` *(new field)* | — | — |
+| `ar` | `authorReg` | Staff Details · `Registrations` *(new, multi-line)* | — | — |
 | `rv` | `reviewer` | Staff Details · `Name`, via the Reviewer relationship | 6 | — |
 | `rq` | `reviewerQual` | Staff Details · `Qualifications` *(new field)* | — | — |
-| `rr` | `reviewerReg` | Staff Details · `Registration No` *(new field)* | — | — |
+| `rr` | `reviewerReg` | Staff Details · `Registrations` *(new, multi-line)* | — | — |
+
+**`ar` and `rr` are multi-line**, one jurisdiction per line — an engineer registered in several
+states holds a separate number in each. Newline-separated, not comma-separated: the qualification
+line is itself `CPEng, NER, 3826369`, so commas are part of the data. Quickbase sends CRLF; the
+engine normalises it to LF on arrival so no stray carriage return reaches the rendered document.
 
 `ty` must be one of `desktop`, `classification`, `comprehensive`. Anything else falls back to
 `classification`.

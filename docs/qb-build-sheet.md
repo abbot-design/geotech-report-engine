@@ -125,10 +125,26 @@ Open **Staff Details** → **Settings** → **+ New Fields**:
 
 | Field Label | Type | Example |
 |---|---|---|
-| `Qualifications` | Text | `BEng (Civil) MIEAust CPEng` |
-| `Registration No` | Text | `NER 1234567` |
+| `Qualifications` | Text | `CPEng, NER, 3826369` |
+| `Registrations` | **Text - Multi-line** | see below |
 
 Fill them in for the engineers who sign reports. Leave them blank for admin staff.
+
+**`Registrations` must be multi-line, one jurisdiction per line**, because an engineer registered in
+several states holds a separate number in each. Ryan's block is the worked example:
+
+```
+Qualifications:  CPEng, NER, 3826369
+
+Registrations:   NSW & TAS BDC3431
+                 VIC PE0000408
+                 QLD RPEQ 21681
+```
+
+> **Not comma-separated.** The qualification line is itself `CPEng, NER, 3826369` — commas are part
+> of the data, so splitting on them would break that line into three. Newlines are unambiguous, and
+> the engine prints one per line exactly as typed. The `&` in `NSW & TAS` is safe: it is a field
+> *value*, not part of the formula, and `URLEncode()` handles it.
 
 > ⚠️ **Fix three names while you are here.** Of the 13 staff records, `Ryan`, `Nerrine` and `Max`
 > are first-name only. A certifier-facing report that says *"Prepared by: Ryan"* is not acceptable,
@@ -144,8 +160,8 @@ Create the relationship **twice**, parent = **Staff Details**, child = **Geotech
 
 | Relationship | Name the reference field | Lookups to add |
 |---|---|---|
-| 1st | `Author` | `Name`, `Qualifications`, `Registration No` |
-| 2nd | `Reviewer` | `Name`, `Qualifications`, `Registration No` |
+| 1st | `Author` | `Name`, `Qualifications`, `Registrations` |
+| 2nd | `Reviewer` | `Name`, `Qualifications`, `Registrations` |
 
 Both fit inside the three-lookup limit, so no second pass needed.
 
@@ -197,10 +213,10 @@ var text P =
   & "&cc="  & URLEncode([Council])
   & "&au="  & URLEncode([Author - Name])
   & "&aq="  & URLEncode([Author - Qualifications])
-  & "&ar="  & URLEncode([Author - Registration No])
+  & "&ar="  & URLEncode([Author - Registrations])
   & "&rv="  & URLEncode([Reviewer - Name])
   & "&rq="  & URLEncode([Reviewer - Qualifications])
-  & "&rr="  & URLEncode([Reviewer - Registration No]);
+  & "&rr="  & URLEncode([Reviewer - Registrations]);
 
 $BASE & $P
 ```

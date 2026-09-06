@@ -208,6 +208,48 @@ test.describe('Quickbase prefill', () => {
   });
 });
 
+test.describe('multi-jurisdiction registrations', () => {
+
+  // Engineers registered in several states hold a separate number in each.
+  // Ryan's own block is the worked example, and note that its first line
+  // contains commas — which is why these are newline-separated, not
+  // comma-separated.
+  const REG = 'NSW & TAS BDC3431\nVIC PE0000408\nQLD RPEQ 21681';
+
+  test('a multi-line registration survives the URL fragment intact', async ({ page }) => {
+    await open(page, { ...PAYLOAD, ar: REG, aq: 'CPEng, NER, 3826369' });
+    const d = await page.evaluate(() => ({ ar: report().d.authorReg, aq: report().d.authorQual }));
+    expect(d.ar).toBe(REG);
+    // The comma-bearing qualification line must not be split or mangled.
+    expect(d.aq).toBe('CPEng, NER, 3826369');
+  });
+
+  test('Quickbase CRLF is normalised so no stray carriage return renders', async ({ page }) => {
+    await open(page, { ...PAYLOAD, ar: 'NSW BDC3431\r\nVIC PE0000408' });
+    const ar = await page.evaluate(() => report().d.authorReg);
+    expect(ar).toBe('NSW BDC3431\nVIC PE0000408');
+    expect(ar).not.toContain('\r');
+  });
+
+  test('each registration prints on its own line in the report', async ({ page }) => {
+    await open(page, { ...PAYLOAD, ar: REG });
+    await page.click('#previewbtn');
+    const html = await page.locator('#rpt').innerHTML();
+    // Three jurisdictions, separated by line breaks rather than run together.
+    expect(html).toContain('NSW &amp; TAS BDC3431<br>VIC PE0000408<br>QLD RPEQ 21681');
+    const text = await page.locator('#rpt').innerText();
+    expect(text).toContain('QLD RPEQ 21681');
+  });
+
+  test('the ampersand in a registration is escaped, not injected', async ({ page }) => {
+    await open(page, { ...PAYLOAD, ar: 'NSW & TAS <script>alert(1)</script>' });
+    await page.click('#previewbtn');
+    const html = await page.locator('#rpt').innerHTML();
+    expect(html).toContain('&amp;');
+    expect(html).not.toContain('<script>alert(1)</script>');
+  });
+});
+
 test.describe('Device handoff QR', () => {
 
   test('produces a scannable link that round-trips through the same map', async ({ page }) => {
