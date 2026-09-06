@@ -567,7 +567,12 @@ const PREFILL_V = "1";
 const PREFILL_MAP = {
   jn:"jobNo",  cl:"client",   co:"careOf",  pd:"projectDesc",
   st:"street", sb:"suburb",   sa:"state",   pc:"postcode",
-  ld:"lotDp",  cc:"council",  au:"author",
+  ld:"lotDp",  cc:"council",
+  /* Author and reviewer credentials are the same every time for a given
+     engineer and are retyped on every report, so they are worth carrying
+     even though they are the least likely to already exist in a CRM. */
+  au:"author",   aq:"authorQual",   ar:"authorReg",
+  rv:"reviewer", rq:"reviewerQual", rr:"reviewerReg",
   cp:"clientPhone", ce:"clientEmail"
 };
 

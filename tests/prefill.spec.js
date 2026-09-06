@@ -28,6 +28,11 @@ const PAYLOAD = {
   ld:  'Lot 12 DP 1234567',
   cc:  'Cessnock City Council',
   au:  'Ryan Chalmers',
+  aq:  'BEng (Civil) MIEAust CPEng',
+  ar:  'NER 1234567',
+  rv:  'Simon Carroll',
+  rq:  'BEng (Civil) MIEAust',
+  rr:  'NER 7654321',
 };
 
 // Payload key -> the DOM id of the field it must land in.
@@ -35,6 +40,8 @@ const LANDS_IN = {
   jn: '#f_jobNo',   cl: '#f_client',   co: '#f_careOf', pd: '#f_projectDesc',
   st: '#f_street',  sb: '#f_suburb',   sa: '#f_state',  pc: '#f_postcode',
   ld: '#f_lotDp',   cc: '#f_council',  au: '#f_author',
+  aq: '#f_authorQual',   ar: '#f_authorReg',
+  rv: '#f_reviewer',     rq: '#f_reviewerQual', rr: '#f_reviewerReg',
 };
 
 const hash = (obj) => '#' + new URLSearchParams(obj).toString();
@@ -55,8 +62,10 @@ test.describe('Quickbase prefill', () => {
 
     // Setup section fields.
     await gotoTab(page, 'Setup');
-    await expect(page.locator(LANDS_IN.jn)).toHaveValue(PAYLOAD.jn);
-    await expect(page.locator(LANDS_IN.au)).toHaveValue(PAYLOAD.au);
+    for (const key of ['jn', 'au', 'aq', 'ar', 'rv', 'rq', 'rr']) {
+      await expect(page.locator(LANDS_IN[key]), `payload key "${key}"`)
+        .toHaveValue(PAYLOAD[key]);
+    }
 
     // Client & site fields.
     await gotoTab(page, 'Client & site ID');
@@ -124,13 +133,25 @@ test.describe('Quickbase prefill', () => {
     await expect(bar).toContainText('zz');
   });
 
-  test('the banner names what Quickbase could not supply', async ({ page }) => {
+  test('a complete payload reports no outstanding setup or client gaps', async ({ page }) => {
     await open(page, PAYLOAD);
     const bar = page.locator('#prefillbar');
     await expect(bar).toBeVisible();
-    // Reviewer has no Quickbase source and is required to issue.
-    await expect(bar).toContainText('Reviewer');
     await expect(bar).toContainText('Prefilled');
+    await expect(bar).not.toContainText('still need entering');
+  });
+
+  test('the banner names what Quickbase could not supply', async ({ page }) => {
+    // Drop the fields a thin Quickbase setup would not have.
+    const thin = { ...PAYLOAD };
+    delete thin.rv; delete thin.ld; delete thin.sb; delete thin.pc;
+    await open(page, thin);
+    const bar = page.locator('#prefillbar');
+    await expect(bar).toBeVisible();
+    await expect(bar).toContainText('still need entering');
+    await expect(bar).toContainText('Reviewer for issue');
+    await expect(bar).toContainText('Lot and DP');
+    await expect(bar).toContainText('Full site address');
   });
 
   test('the banner can be dismissed', async ({ page }) => {
@@ -192,7 +213,8 @@ test.describe('Device handoff QR', () => {
     expect(url).toContain('#qb=1');
 
     const parsed = new URLSearchParams(new URL(url).hash.slice(1));
-    for (const key of ['jn', 'cl', 'co', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc', 'au']) {
+    for (const key of ['jn', 'cl', 'co', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc',
+                       'au', 'aq', 'ar', 'rv', 'rq', 'rr']) {
       expect(parsed.get(key), `round-trip of "${key}"`).toBe(PAYLOAD[key]);
     }
     expect(parsed.get('ty')).toBe('classification');

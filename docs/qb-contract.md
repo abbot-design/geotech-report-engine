@@ -65,7 +65,12 @@ formula-string escaping is the fiddliest part of Quickbase and this avoids it en
 | `pc` | `postcode` | Geotech Reports · Postcode | — | — |
 | `ld` | `lotDp` | Geotech Reports · Lot and DP | — | — |
 | `cc` | `council` | Geotech Reports · Council | — | — |
-| `au` | `author` | Geotech Reports · Author | — | — |
+| `au` | `author` | Staff Details · `Name`, via the Author relationship | 6 | — |
+| `aq` | `authorQual` | Staff Details · `Qualifications` *(new field)* | — | — |
+| `ar` | `authorReg` | Staff Details · `Registration No` *(new field)* | — | — |
+| `rv` | `reviewer` | Staff Details · `Name`, via the Reviewer relationship | 6 | — |
+| `rq` | `reviewerQual` | Staff Details · `Qualifications` *(new field)* | — | — |
+| `rr` | `reviewerReg` | Staff Details · `Registration No` *(new field)* | — | — |
 
 `ty` must be one of `desktop`, `classification`, `comprehensive`. Anything else falls back to
 `classification`.
@@ -80,8 +85,12 @@ if Abbot decides it wants them.
 Measured across all 7,079 project records. These have **no source field in Quickbase** and the
 engineer must always enter them:
 
-`reviewer` · author/reviewer qualifications · registration numbers · `slopeDeg` · `geologyUnit` ·
-`siteClass` · everything from fieldwork onward.
+`slopeDeg` · `geologyUnit` · `siteClass` · everything from fieldwork onward.
+
+Author and reviewer names, qualifications and registration numbers **were** on this list. They now
+come from Staff Details via two relationships — see Step 5 of the build sheet. Those three values
+per person are identical on every report and were previously retyped each time, which made them the
+highest-value prefill available.
 
 Before the Geotech Reports table existed, `lotDp`, `suburb`, `state`, `postcode` and `council` were
 also unavailable — **that table is what makes this integration worth building.**
