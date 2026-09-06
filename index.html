@@ -332,7 +332,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 
     <details class="card">
       <summary>Transfer between devices</summary>
-      <p class="hint">No cloud sync yet. Export a report to .json, send it to the other device, and import it there.</p>
+      <p class="hint">No cloud sync yet. To move a job you have not started yet, open it and use
+       <b>Send to another device</b> to show a QR code. To move a report with photos and field data
+       in it, export it to .json and import it on the other device.</p>
       <div class="inline">
         <button id="importbtn">Import a report (.json)</button>
         <input type="file" id="importfile" accept="application/json" hidden aria-hidden="true">
@@ -346,6 +348,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
       <div class="stratalabel" id="stratalabel" role="status">Section progress</div>
       <div class="rail" id="tabrail" role="tablist"></div>
     </nav>
+    <div id="prefillbar" class="gaps no-print" hidden></div>
     <form id="form" novalidate autocomplete="off"></form>
   </section>
 
@@ -370,6 +373,18 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   </div>
 </dialog>
 
+<dialog id="qrdlg" style="border:1px solid var(--line);border-radius:12px;max-width:24rem;padding:1.1rem 1.2rem">
+  <b>Send to another device</b>
+  <p class="hint">Scan this with the other device's camera. It opens this job in the report engine
+   with the client and site details already filled in.</p>
+  <p class="hint"><b>Job details only</b> — photos, borehole logs and field data are not included.
+   Use Export (.json) to move a report you have already worked on.</p>
+  <div id="qrbox" style="background:#fff;padding:.7rem;border-radius:12px;display:flex;justify-content:center;margin-top:.8rem"></div>
+  <div class="inline" style="justify-content:flex-end;margin-top:1rem">
+    <button id="qrclose">Close</button>
+  </div>
+</dialog>
+
 <div class="stepnav no-print" id="stepnav" hidden>
   <button id="prevbtn">← Back</button>
   <span class="mid" id="stepmid"></span>
@@ -377,6 +392,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   <button class="primary" id="nextbtn">Next →</button>
 </div>
 
+<script src="vendor/qrcode.min.js"></script>
 <script>
 "use strict";
 /* ============================================================
@@ -533,6 +549,153 @@ function blank(type){
     source: null   // reserved: quote-system prefill (phase 2)
   };
 }
+/* ============================================================
+   QUICKBASE PREFILL — the contract is docs/qb-contract.md
+   A Formula-URL button in Quickbase opens this app with the job
+   details in the URL *fragment*. A fragment is never sent to a
+   server, so client details never reach GitHub's logs; it is
+   also scrubbed from the address bar before the first render so
+   it cannot linger in history or a bookmark.
+   There is no API call and no token anywhere in this path.
+   ============================================================ */
+const PREFILL_V = "1";
+/* Payload key -> report.d key. The one place the engine side of the
+   contract is edited; change it here, in docs/qb-contract.md, and in
+   tests/prefill.spec.js. cp/ce are accepted but the Quickbase formula
+   does not send them by default — the cover page does not need a
+   client's phone and email. */
+const PREFILL_MAP = {
+  jn:"jobNo",  cl:"client",   co:"careOf",  pd:"projectDesc",
+  st:"street", sb:"suburb",   sa:"state",   pc:"postcode",
+  ld:"lotDp",  cc:"council",  au:"author",
+  cp:"clientPhone", ce:"clientEmail"
+};
+
+/* Returns null when this is an ordinary launch, {bad:...} when a link
+   arrived but could not be read. A malformed link must never stop the
+   app from starting — it is the only thing an engineer has on site. */
+function parsePrefill(){
+  const h = location.hash || "";
+  if(!h.startsWith("#qb=")) return null;
+  try{
+    const q = new URLSearchParams(h.slice(1));
+    if(q.get("qb") !== PREFILL_V) return {bad:"version"};
+    const out = {d:{}, unknown:[], type:null, recordId:null};
+    for(const [k,v] of q){
+      if(k==="qb") continue;
+      if(k==="ty"){ out.type=v; continue; }
+      if(k==="rid"){ out.recordId=v; continue; }
+      if(PREFILL_MAP[k]) out.d[PREFILL_MAP[k]] = v;
+      else out.unknown.push(k);
+    }
+    return out;
+  }catch(e){ return {bad:"parse"}; }
+}
+
+/* blank() is the authoritative list of fields this app has, so validating
+   against it needs no second schema to keep in sync. Anything that does
+   not land is counted and shown to the engineer rather than dropped. */
+function applyPrefill(p){
+  const type = TYPES[p.type] ? p.type : "classification";
+  const r = blank(type);
+  const rejected = p.unknown.slice();
+  let applied = 0;
+  for(const [k,v] of Object.entries(p.d)){
+    if(!(k in r.d)){ rejected.push(k); continue; }
+    if(v==null || v==="") continue;
+    r.d[k] = v; applied++;
+  }
+  r.source = { system:"quickbase", app:"bkhasky43",
+               recordId: p.recordId || null, receivedAt: new Date().toISOString() };
+  return {r, applied, rejected};
+}
+
+/* Clicking the Quickbase button twice must not leave two half-finished
+   reports for the same job. No server needed: this device already holds
+   every report it has been given. */
+function findBySource(recordId, type){
+  if(!recordId) return null;
+  return Object.values(db).find(r => r.source && r.source.recordId===recordId && r.type===type) || null;
+}
+
+function showPrefillBanner(r, applied, rejected){
+  const bar=$("prefillbar"); if(!bar) return;
+  const rec = r.source && r.source.recordId ? ` from Quickbase record ${esc(r.source.recordId)}` : " from Quickbase";
+  let html = `<b>Prefilled ${applied} field${applied===1?"":"s"}${rec}.</b>`;
+  /* Quickbase keeps the site address as one free-text line, so the split
+     into suburb/state/postcode is the engineer's to check every time. */
+  if(r.d.street && (!r.d.suburb || !r.d.postcode))
+    html += `<p class="hint">Check the address: Quickbase stores it as a single line, so the suburb, state and postcode may still need splitting out.</p>`;
+  if(rejected.length)
+    html += `<p class="hint">${rejected.length} value${rejected.length===1?" was":"s were"} not recognised (${esc(rejected.join(", "))}). The link and this app disagree — see docs/qb-contract.md.</p>`;
+  /* Only the gaps prefill was meant to cover. Listing the fieldwork the
+     engineer has not done yet would be noise, not a prompt. */
+  const gaps = requirements(r).filter(g => g.sec==="setup" || g.sec==="client");
+  if(gaps.length)
+    html += `<p class="hint">Quickbase could not supply these — they still need entering:</p><ul>`
+          + gaps.map(g=>`<li>${esc(g.label)}</li>`).join("") + `</ul>`;
+  html += `<div class="inline" style="margin-top:.7rem"><button type="button" id="prefilldismiss">Got it</button></div>`;
+  bar.innerHTML = html; bar.hidden = false;
+}
+
+/* Returns true when it has taken over the launch. */
+function bootPrefill(){
+  const p = parsePrefill();
+  if(!p) return false;
+  /* Scrub first, before anything renders and before any await point. */
+  try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+  if(p.bad){ note("That Quickbase link could not be read — starting from the report list instead."); return false; }
+
+  const type = TYPES[p.type] ? p.type : "classification";
+  const existing = findBySource(p.recordId, type);
+  if(existing){
+    currentId=existing.id; sectionIdx=0; show("editor"); renderEditor();
+    note("Reopened the report already started for this Quickbase job.");
+    return true;
+  }
+  const {r, applied, rejected} = applyPrefill(p);
+  db[r.id]=r; currentId=r.id; sectionIdx=0; saveDb();
+  show("editor"); renderEditor();
+  showPrefillBanner(r, applied, rejected);
+  return true;
+}
+
+/* The prefill map run backwards, so a job set up at the office can be
+   moved to the tablet without a file. Job details only — photos and
+   logs are megabytes and will never fit in a QR code. */
+function buildPrefillUrl(r){
+  const q = new URLSearchParams();
+  q.set("qb", PREFILL_V);
+  q.set("ty", r.type);
+  if(r.source && r.source.recordId) q.set("rid", r.source.recordId);
+  for(const [k,target] of Object.entries(PREFILL_MAP)){
+    if(r.d[target]) q.set(k, r.d[target]);
+  }
+  return location.origin + location.pathname + "#" + q.toString();
+}
+
+function showHandoffQR(){
+  const r=report(); if(!r) return;
+  const box=$("qrbox"); if(box) box.innerHTML="";
+  if(typeof qrcode!=="function"){ note("QR generator did not load — use Export (.json) instead."); return; }
+  const url=buildPrefillUrl(r);
+  /* Drop error correction before giving up: a long description can push a
+     medium-correction code past its capacity, and this is a close-range
+     screen-to-camera scan where the lower level is still comfortable. */
+  let q=null;
+  for(const ec of ["M","L"]){
+    try{ const c=qrcode(0,ec); c.addData(url); c.make(); q=c; break; }catch(e){}
+  }
+  if(!q){ note("Too much text for a QR code — use Export (.json) to move this report."); return; }
+  box.innerHTML=q.createSvgTag({cellSize:4, margin:2, scalable:true});
+  const svg=box.querySelector("svg");
+  if(svg){ svg.removeAttribute("width"); svg.removeAttribute("height");
+           svg.style.width="min(68vw,16rem)"; svg.style.height="auto"; }
+  const dlg=$("qrdlg");
+  if(dlg && dlg.showModal) dlg.showModal();
+  else note("This browser cannot show the dialog — use Export (.json) instead.");
+}
+
 function report(){ return db[currentId]; }
 function statusOf(r){ return r.issued ? "issued" : (r.status||"draft"); }
 function saveDb(){ if(report()) report().updated = new Date().toISOString();
@@ -1072,6 +1235,7 @@ review(r){ return `
  <div id="reviewgaps"></div>
  <div class="inline" style="margin-top:.8rem">
   <button type="button" id="exportthis">Export data (.json)</button>
+  <button type="button" id="qrthis">Send to another device</button>
  </div>
  </fieldset>`; }
 };
@@ -1721,6 +1885,9 @@ document.addEventListener("click",e=>{
   if(t.id==="printbtn"){ window.print();
     if(inFrame()) note("Embedded previews block printing — open the deployed app in a full browser tab to print or save the PDF."); }
   if(t.id==="exportthis") exportReport(currentId);
+  if(t.id==="qrthis") showHandoffQR();
+  if(t.id==="qrclose") $("qrdlg").close();
+  if(t.id==="prefilldismiss"){ $("prefillbar").hidden=true; $("prefillbar").innerHTML=""; }
   if(t.id==="issuebtn"){
     const rp=report(), d=rp.d;
     if(statusOf(rp)!=="review"){ note("Submit for review first (Review & issue page)."); return; }
@@ -1912,7 +2079,14 @@ function setHeadH(){
   st.setProperty("--chromeh", (h + (tabs? tabs.offsetHeight:0) + 8)+"px");
 }
 setHeadH(); addEventListener("resize",setHeadH);
-renderHome(); show("home");
+/* Render the list either way, so "back to all reports" works from a
+   report that arrived by link. A Quickbase link opens its job directly. */
+renderHome();
+if(!bootPrefill()) show("home");
+/* Because the fragment is scrubbed after use, a second Quickbase link opened
+   into the same tab changes only the fragment — which does not reload the
+   page. Without this the button would appear to do nothing on the second job. */
+addEventListener("hashchange", () => { bootPrefill(); });
 </script>
 </body>
 </html>
