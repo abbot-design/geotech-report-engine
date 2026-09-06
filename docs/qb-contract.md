@@ -51,28 +51,37 @@ formula-string escaping is the fiddliest part of Quickbase and this avoids it en
 
 ### Field map
 
-| Key | → engine `report.d` | Source | Field ID | Fill |
-|---|---|---|---|---|
-| `rid` | *(→ `report.source.recordId`)* | Geotech Reports · Record ID# | 3 | — |
-| `ty` | *(→ `report.type`)* | Geotech Reports · Report Type | — | — |
-| `jn` | `jobNo` | Geotech Reports · Job No | — | — |
-| `cl` | `client` | Projects · `Customer` *(lookup)* | 10 | 100% |
-| `co` | `careOf` | Projects · `Customer Contact` *(lookup)* | 24 | 99% |
-| `cp` | `clientPhone` | Projects · `Customer Contact Ph` *(lookup)* | 25 | 89% |
-| `ce` | `clientEmail` | Projects · `Customer Contact Email` *(lookup)* | 26 | 94% |
-| `pd` | `projectDesc` | Projects · `Project Detail` *(lookup)* | 9 | 93% |
-| `st` | `street` | Geotech Reports · Street, falling back to Projects · `Project Address` | 28 | 97% |
-| `sb` | `suburb` | Geotech Reports · Suburb | — | — |
-| `sa` | `state` | Geotech Reports · State | — | — |
-| `pc` | `postcode` | Geotech Reports · Postcode | — | — |
-| `ld` | `lotDp` | Geotech Reports · Lot and DP | — | — |
-| `cc` | `council` | Geotech Reports · Council | — | — |
-| `au` | `author` | Staff Details · `Name`, via the Author relationship | 6 | — |
-| `aq` | `authorQual` | Staff Details · `Qualifications` *(new field)* | — | — |
-| `ar` | `authorReg` | Staff Details · `Registrations` *(new, multi-line)* | — | — |
-| `rv` | `reviewer` | Staff Details · `Name`, via the Reviewer relationship | 6 | — |
-| `rq` | `reviewerQual` | Staff Details · `Qualifications` *(new field)* | — | — |
-| `rr` | `reviewerReg` | Staff Details · `Registrations` *(new, multi-line)* | — | — |
+| Key | → engine `report.d` | Geotech Reports field | fid |
+|---|---|---|---|
+| `rid` | *(→ `report.source.recordId`)* | `Record ID#` | 3 |
+| `ty` | *(→ `report.type`)* | `Report Type` | 6 |
+| `jn` | `jobNo` | `Job No` | 7 |
+| `cl` | `client` | `Project - Customer` *(lookup)* | 20 |
+| `co` | `careOf` | `Project - Customer Contact` *(lookup)* | 21 |
+| `cp` | `clientPhone` | `Project - Customer Contact Ph` *(lookup)* | 24 |
+| `ce` | `clientEmail` | `Project - Customer Contact Email` *(lookup, Email type)* | 25 |
+| `pd` | `projectDesc` | `Project Detail` *(lookup)* | 22 |
+| `st` | `street` | `Street` 8, falling back to `Project Address` *(lookup)* | 8 / 23 |
+| `sb` | `suburb` | `Suburb` | 9 |
+| `sa` | `state` | `State` | 10 |
+| `pc` | `postcode` | `Postcode` | 11 |
+| `ld` | `lotDp` | `Lot and DP` | 12 |
+| `cc` | `council` | `Council` | 13 |
+| `au` | `author` | `Author - Name` *(lookup)* | 27 |
+| `aq` | `authorQual` | `Author - Qualifications` *(lookup)* | 28 |
+| `ar` | `authorReg` | `Author - Registrations` *(lookup)* | 29 |
+| `rv` | `reviewer` | `Reviewer - Name` *(lookup)* | 31 |
+| `rq` | `reviewerQual` | `Reviewer - Qualifications` *(lookup)* | 32 |
+| `rr` | `reviewerReg` | `Reviewer - Registrations` *(lookup)* | 33 |
+
+**These are the field IDs as actually built** (Geotech Reports, 33 fields, confirmed 7 September
+2026) — not assumed. Reference fields: `Related Project` 19, `Author` 26, `Reviewer` 30. Fields the
+button does not read: `Report ID` 14, `Status` 15, `Issued Date` 16, `Site Class (AS 2870)` 17,
+`Report PDF` 18.
+
+Note the Projects lookups carry **no `Related ` prefix**, and `Project Detail` / `Project Address`
+carry no prefix at all. That is what Quickbase generated.
+
 
 **`ar` and `rr` are multi-line**, one jurisdiction per line — an engineer registered in several
 states holds a separate number in each. Newline-separated, not comma-separated: the qualification

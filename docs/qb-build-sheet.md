@@ -73,11 +73,16 @@ by write-back later if that gets built.
 
 | Field Label | Type |
 |---|---|
-| `Report ID` | Text |
+| `Report ID` | **Text** — not Numeric |
 | `Status` | Text - Multiple Choice |
 | `Date Issued` | Date |
 | `Site Class` | Text - Multiple Choice |
 | `Report PDF` | File Attachment |
+
+> ⚠️ **`Report ID` must be Text.** The engine's report id is alphanumeric — `"R" + a base-36
+> timestamp`, e.g. `R1m8x9kq` — so a Numeric field will reject it. This is a record-keeping field
+> the button never reads, so a wrong type causes no error now; it only bites later, when someone
+> tries to file the issued report's id against the record.
 
 **`Status`** choices: `Draft` · `In review` · `Issued`
 **`Site Class`** choices (AS 2870): `A · S · M · M-D · H1 · H1-D · H2 · H2-D · E · E-D · P`
@@ -228,12 +233,12 @@ var text P =
   & "&rid=" & URLEncode(ToText([Record ID#]))
   & "&ty="  & URLEncode($TY)
   & "&jn="  & URLEncode([Job No])
-  & "&cl="  & URLEncode([Related Project - Customer])
-  & "&co="  & URLEncode([Related Project - Customer Contact])
-  & "&cp="  & URLEncode([Related Project - Customer Contact Ph])
-  & "&ce="  & URLEncode([Related Project - Customer Contact Email])
-  & "&pd="  & URLEncode([Related Project - Project Detail])
-  & "&st="  & URLEncode(If(Trim([Street]) = "", [Related Project - Project Address], [Street]))
+  & "&cl="  & URLEncode([Project - Customer])
+  & "&co="  & URLEncode([Project - Customer Contact])
+  & "&cp="  & URLEncode([Project - Customer Contact Ph])
+  & "&ce="  & URLEncode(ToText([Project - Customer Contact Email]))
+  & "&pd="  & URLEncode([Project Detail])
+  & "&st="  & URLEncode(If(Trim([Street]) = "", [Project Address], [Street]))
   & "&sb="  & URLEncode([Suburb])
   & "&sa="  & URLEncode([State])
   & "&pc="  & URLEncode([Postcode])
@@ -249,10 +254,14 @@ var text P =
 $BASE & $P
 ```
 
-**Replace the `[Related Project - …]` and `[Author - …]` / `[Reviewer - …]` names with whatever you
-wrote down in Steps 4 and 5.** Easiest
-way to get them exactly right: click into the Formula box and use the **Fields & Functions** list to
-insert them rather than typing.
+**These are the real field names as built** — read off the Geotech Reports table on 7 September
+2026, not assumed. Paste as-is.
+
+Two things worth knowing about them:
+- The Projects lookups came back **without** a `Related ` prefix, and `Project Detail` and
+  `Project Address` carry no prefix at all. That is simply what Quickbase generated.
+- `Project - Customer Contact Email` is an **Email** field rather than Text, so it is wrapped in
+  `ToText()` before `URLEncode()`.
 
 Notes on the formula:
 - The `Case()` block means staff pick readable options while the engine still receives the exact
