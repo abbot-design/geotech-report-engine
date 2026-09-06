@@ -58,6 +58,8 @@ formula-string escaping is the fiddliest part of Quickbase and this avoids it en
 | `jn` | `jobNo` | Geotech Reports · Job No | — | — |
 | `cl` | `client` | Projects · `Customer` *(lookup)* | 10 | 100% |
 | `co` | `careOf` | Projects · `Customer Contact` *(lookup)* | 24 | 99% |
+| `cp` | `clientPhone` | Projects · `Customer Contact Ph` *(lookup)* | 25 | 89% |
+| `ce` | `clientEmail` | Projects · `Customer Contact Email` *(lookup)* | 26 | 94% |
 | `pd` | `projectDesc` | Projects · `Project Detail` *(lookup)* | 9 | 93% |
 | `st` | `street` | Geotech Reports · Street, falling back to Projects · `Project Address` | 28 | 97% |
 | `sb` | `suburb` | Geotech Reports · Suburb | — | — |
@@ -75,10 +77,17 @@ formula-string escaping is the fiddliest part of Quickbase and this avoids it en
 `ty` must be one of `desktop`, `classification`, `comprehensive`. Anything else falls back to
 `classification`.
 
-**Deliberately omitted: `cp` (client phone) and `ce` (client email).** The engine *can* receive them
-— they are in `PREFILL_MAP` — but the default formula does not send them, because the report cover
-does not need them and they are the most sensitive values available. Add them to the formula only
-if Abbot decides it wants them.
+**On the contact's phone and email.** These were originally left out on the grounds that they were
+"the most sensitive values available". That was wrong on two counts. The payload already carries the
+client's name and the exact site address, which are more identifying than a business phone number,
+so singling these out was inconsistent. And it already carries that same contact's *name* as
+`careOf` — moving someone's name but not their number is the worst of both worlds, because the
+personal data has travelled anyway and the engineer still has to go and look the number up.
+
+`buildReport()` never prints either value; they are captured so the engineer can arrange site
+access. They travel for that reason and no other. Use the **project contact** fields (25, 26), not
+the customer-level ones — the contact is the person actually on site, and is the same person `co`
+names.
 
 ### What Quickbase cannot supply
 

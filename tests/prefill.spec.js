@@ -20,6 +20,8 @@ const PAYLOAD = {
   jn:  'AD-2026-014',
   cl:  'Example Client Pty Ltd',
   co:  'Jane Architect',
+  cp:  '0412 345 678',
+  ce:  'jane@example.com',
   pd:  'New single-storey dwelling and detached garage',
   st:  '12 Example Road',
   sb:  'Cessnock',
@@ -38,6 +40,7 @@ const PAYLOAD = {
 // Payload key -> the DOM id of the field it must land in.
 const LANDS_IN = {
   jn: '#f_jobNo',   cl: '#f_client',   co: '#f_careOf', pd: '#f_projectDesc',
+  cp: '#f_clientPhone', ce: '#f_clientEmail',
   st: '#f_street',  sb: '#f_suburb',   sa: '#f_state',  pc: '#f_postcode',
   ld: '#f_lotDp',   cc: '#f_council',  au: '#f_author',
   aq: '#f_authorQual',   ar: '#f_authorReg',
@@ -69,7 +72,7 @@ test.describe('Quickbase prefill', () => {
 
     // Client & site fields.
     await gotoTab(page, 'Client & site ID');
-    for (const key of ['cl', 'co', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc']) {
+    for (const key of ['cl', 'co', 'cp', 'ce', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc']) {
       await expect(page.locator(LANDS_IN[key]), `payload key "${key}"`)
         .toHaveValue(PAYLOAD[key]);
     }
@@ -214,7 +217,7 @@ test.describe('Device handoff QR', () => {
 
     const parsed = new URLSearchParams(new URL(url).hash.slice(1));
     for (const key of ['jn', 'cl', 'co', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc',
-                       'au', 'aq', 'ar', 'rv', 'rq', 'rr']) {
+                       'au', 'aq', 'ar', 'rv', 'rq', 'rr', 'cp', 'ce']) {
       expect(parsed.get(key), `round-trip of "${key}"`).toBe(PAYLOAD[key]);
     }
     expect(parsed.get('ty')).toBe('classification');

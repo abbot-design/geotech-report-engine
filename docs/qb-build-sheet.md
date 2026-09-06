@@ -92,7 +92,14 @@ by write-back later if that gets built.
    - **Add lookup fields:** choose **`Customer`**, **`Customer Contact`**, **`Project Detail`**
 4. Select **Create Relationship**.
 5. You can only add three lookups at a time, so reopen the relationship, select **Add Lookup
-   Fields** at the bottom of the **Child Table** section, and add the fourth: **`Project Address`**.
+   Fields** at the bottom of the **Child Table** section, and add three more:
+   **`Project Address`**, **`Customer Contact Ph`**, **`Customer Contact Email`**.
+
+> The contact's phone and email travel because the engineer has to arrange site access, and the
+> payload already carries that same person's name as `Customer Contact`. Carrying someone's name but
+> not their number is the worst of both worlds — you have moved the personal data and still made the
+> engineer go and look it up. Neither value is ever printed on the report; they exist so the
+> engineer can make a phone call.
 
 > ⚠️ **Check this before Step 6.** Quickbase names lookup fields itself, usually
 > `Related Project - Customer` or `Project - Customer`. **Go to the Fields page and write down the
@@ -179,6 +186,8 @@ var text P =
   & "&jn="  & URLEncode([Job No])
   & "&cl="  & URLEncode([Related Project - Customer])
   & "&co="  & URLEncode([Related Project - Customer Contact])
+  & "&cp="  & URLEncode([Related Project - Customer Contact Ph])
+  & "&ce="  & URLEncode([Related Project - Customer Contact Email])
   & "&pd="  & URLEncode([Related Project - Project Detail])
   & "&st="  & URLEncode(If(Trim([Street]) = "", [Related Project - Project Address], [Street]))
   & "&sb="  & URLEncode([Suburb])
