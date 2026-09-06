@@ -328,9 +328,20 @@ test.describe('F — flow', () => {
     await expect(page.locator('#view-home')).toBeVisible();
   });
 
-  test('F2: the footer carries three controls and no duplicate way home', async ({ page }) => {
+  test('F1b: the wordmark returns to the report list', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await expect(page.locator('#homebtn')).toHaveCount(0);
+    await page.click('#homebtn');
+    await expect(page.locator('#view-home')).toBeVisible();
+  });
+
+  // The header carries two ways home by design: the wordmark, which is the
+  // conventional logo-returns-to-the-list pattern, and the context line, which
+  // names the report you are leaving. What must not come back is a third one in
+  // the footer, competing with Back / Preview / Next for the same thumb.
+  test('F2: the footer carries three controls and no way home among them', async ({ page }) => {
+    await newReport(page, 'comprehensive');
+    await expect(page.locator('#stepnav #homebtn')).toHaveCount(0);
+    await expect(page.locator('#stepnav')).not.toContainText(/home|all reports/i);
     const visible = await page.locator('#stepnav button:visible').count();
     expect(visible).toBeLessThanOrEqual(3);
   });

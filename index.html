@@ -59,7 +59,9 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);l
 header.app{background:var(--navy-deep);color:#fff;padding:.65rem 1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;
   position:sticky;top:0;z-index:7}
 header.app .mark{font-family:var(--display);font-weight:800;font-size:.82rem;letter-spacing:.08em;line-height:1.25;
-  max-width:min(58vw,430px);margin:0;padding:.2rem;color:#fff}
+  max-width:min(58vw,430px);background:transparent;border:0;margin:0;padding:.2rem;color:#fff;text-align:left;
+  cursor:pointer;border-radius:6px}
+header.app .mark:hover,header.app .mark:focus-visible{background:rgba(255,255,255,.08)}
 header.app .mark span{color:var(--sky)}
 header.app .ctx{font-size:.85rem;opacity:.9;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   background:transparent;border:0;color:#fff;text-align:left;padding:.3rem .2rem;min-height:0;cursor:pointer;border-radius:6px}
@@ -303,7 +305,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 <body>
 <a class="skip" href="#main">Skip to main content</a>
 <header class="app">
-  <div class="mark">ABBOT DESIGN<span class="markrest"><span> · </span>GEOTECH REPORT ENGINE</span></div>
+  <button type="button" class="mark" id="homebtn" title="Back to all reports">ABBOT DESIGN<span class="markrest"><span> · </span>GEOTECH REPORT ENGINE</span></button>
   <button type="button" class="ctx" id="ctx" title="Back to all reports"></button>
   <a class="helpbtn" href="engine-manual.pdf" target="_blank" rel="noopener" aria-label="Help — open the one-page manual (PDF)">?&nbsp;Help</a>
   <span class="savestate" id="savestate" role="status">Autosave on</span>
@@ -1874,6 +1876,7 @@ document.addEventListener("click",e=>{
   if(t.dataset.export) exportReport(t.dataset.export);
   if(t.dataset.del){ ask("Delete this report from this device? Export first if you need a copy.","Delete").then(ok=>{ if(ok){ delete db[t.dataset.del]; saveDb(); renderHome(); } }); }
   if(t.id==="importbtn") $("importfile").click();
+  if(t.id==="homebtn"){ show("home"); renderHome(); }
   if(t.id==="prevbtn"){ if(sectionIdx>0){sectionIdx--; renderEditor();} }
   if(t.id==="nextbtn"){ const n=visibleSections().length;
     if(sectionIdx<n-1){ sectionIdx++; renderEditor(); } else { buildReport(); show("preview"); } }
