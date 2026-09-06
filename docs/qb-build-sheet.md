@@ -152,26 +152,54 @@ Registrations:   NSW & TAS BDC3431
 
 ### 5b. Two relationships, both to Staff Details
 
-Back in **Geotech Reports** → **Settings** → **Table-to-table relationships** → **+ New
-Relationship**. A parent table can have many children, and you can relate the same two tables more
-than once — that is how one table gets both an author and a reviewer.
+A parent table can have many children, and you can relate the same two tables more than once — that
+is how one table gets both an author and a reviewer.
 
-Create the relationship **twice**, parent = **Staff Details**, child = **Geotech Reports**:
+> **The wizard will not let you name the reference field.** Its dropdown only offers fields that
+> already exist, plus the default one Quickbase creates for you (`Related Staff Detail`). You accept
+> that default and **rename it afterwards**. Renaming is safe: Quickbase references fields by ID,
+> not by label, so nothing breaks — which is the same reason this whole contract is keyed on field
+> IDs.
 
-| Relationship | Name the reference field | Lookups to add |
-|---|---|---|
-| 1st | `Author` | `Name`, `Qualifications`, `Registrations` |
-| 2nd | `Reviewer` | `Name`, `Qualifications`, `Registrations` |
+**Do the two relationships one at a time, renaming in between.** If you create both first, the
+second set of lookups arrives with names like `Staff Detail - Name 2` and you will not be able to
+tell which set belongs to the author and which to the reviewer.
 
-Both fit inside the three-lookup limit, so no second pass needed.
+#### Relationship 1 — Author
 
-> ⚠️ Name the reference fields **`Author`** and **`Reviewer`** during the wizard. Quickbase derives
-> the lookup names from them, so you should end up with `Author - Name`, `Reviewer - Name` and so
-> on. If it names them something else, write down what it actually produced — Step 6 must match.
+1. **Geotech Reports** → **Settings** → **Table-to-table relationships** → **+ New Relationship**.
+2. **Tables:** parent = **Staff Details**, child = **Geotech Reports**.
+3. **How to relate child records to a parent:** leave the reference field as **`Related Staff
+   Detail`**. ⚠️ Do not pick `Report ID` from that dropdown — it is a different field that happens
+   to be listed.
+4. **Add lookup fields:** `Name`, `Qualifications`, `Registrations` — **add `Name` first**, because
+   the first lookup automatically becomes the *reference proxy*, which is what makes the field
+   present as a staff-name dropdown instead of a record number.
+5. Select **Create Relationship**.
+6. Now go to **Settings** → **Fields** and rename the four fields it just created:
 
-> The first lookup becomes the *reference proxy*, which is what the dropdown shows when picking a
-> parent. Adding `Name` first means both fields present as a staff-name dropdown rather than a
-> record ID.
+| Quickbase created | Rename it to |
+|---|---|
+| `Related Staff Detail` | `Author` |
+| `Staff Detail - Name` | `Author - Name` |
+| `Staff Detail - Qualifications` | `Author - Qualifications` |
+| `Staff Detail - Registrations` | `Author - Registrations` |
+
+*(To rename: select the field name on the Fields page, edit the **Label**, then **Save**.)*
+
+#### Relationship 2 — Reviewer
+
+Repeat exactly the same steps. Because the Author fields are already renamed, the new ones come
+back with the plain `Staff Detail - …` names again — so there is no ambiguity about which is which.
+Rename them to `Reviewer`, `Reviewer - Name`, `Reviewer - Qualifications`,
+`Reviewer - Registrations`.
+
+> **Shortcut, if you would rather not rename:** create a **Numeric** field called `Author` *before*
+> starting the wizard, and it should appear in that reference-field dropdown for you to select. I
+> could not verify this against your app, so the rename route above is the one I know works.
+
+> Whatever the fields end up called, **Step 6's formula must match them exactly.** Use the
+> **Fields & Functions** picker in the formula editor rather than typing the names.
 
 **Why not the other options:**
 
