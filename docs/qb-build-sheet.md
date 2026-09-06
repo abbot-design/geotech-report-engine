@@ -1,7 +1,8 @@
 # Build sheet — Geotech Reports table in Quickbase
 
-One-time setup, roughly 20–30 minutes. **Everything here is additive**: a new child table plus
-lookups. Nothing modifies Projects, Customers, or any existing record.
+One-time setup, roughly 20–30 minutes. It adds no data and changes no existing record. It is not
+quite invisible, though: creating a relationship also adds two convenience fields to the *parent*
+table, so Projects and Staff Details each gain columns. Step 5c deals with those.
 
 App: **Abbot Design** (`bkhasky43`) · realm `ryanchalmers.quickbase.com`
 Parent table: **Projects** (`bkhasky79`)
@@ -213,6 +214,35 @@ Rename them to `Reviewer`, `Reviewer - Name`, `Reviewer - Qualifications`,
 | **Text** | Free typing, inconsistent spelling on a legal document — and you still retype quals and registration every time |
 | **Text - Multiple Choice** | A second staff list that drifts from Staff Details. Two places to update whenever someone joins or leaves |
 | **User field** | Lists only people who hold a **Quickbase login**. Staff Details is an HR-ish table — home address, emergency contacts — so it includes people who may have no account. The Quickbase display name is also not necessarily the professional name a certifier needs, and there is nowhere to hang qualifications or registration. It is the right type for *"who is assigned"*, which is what Projects' `Assigned To` already does; it is the wrong type for *"whose registration number goes on a legal document"* |
+
+## Step 5c — Tidy the fields the relationships added to the parent tables
+
+Creating a relationship adds two fields to the **parent** table: a *Report Link* listing the child
+records, and a *Formula - URL* button to add one. Two relationships to Staff Details means four new
+columns there — `Geotech Report records`, `Add Geotech Report`, `Geotech Report records2`,
+`Add Geotech Report2`.
+
+> This is the one place the build is **not** purely additive. It adds no data and touches no
+> existing record, but it does change what the Staff Details table shows.
+
+**On Staff Details — delete the two Add buttons.** Nobody raises a geotech report starting from a
+staff member, so `Add Geotech Report` and `Add Geotech Report2` are pure clutter.
+
+**The two `Geotech Report records` links are worth a moment's thought before deleting.** They answer
+*"what has this engineer authored?"* and *"what have they reviewed?"* — which is a question Abbot may
+well want later. If that appeals, rename them `Reports authored` and `Reports reviewed` and drop
+them from the default report instead of deleting. If not, delete all four.
+
+To delete: **Staff Details** → **Settings** → **Fields**, tick the fields, **Delete**. Neither type
+stores data — a report link is a live view and a formula-URL is computed — so nothing is lost.
+Quickbase permits this: the only relationship field that cannot be deleted is the *reference* field,
+and both of those (`Author` 26, `Reviewer` 30) sit in Geotech Reports, not here.
+
+To hide instead of delete: open the **Default report** → report settings → remove the columns.
+
+**On Projects — keep them.** The same pair was added there, and both earn their place: the link
+shows a project's geotech reports, and `Add Geotech Report` is the natural way to raise one. That
+button is arguably where the whole workflow starts.
 
 ## Step 6 — Create the button
 
