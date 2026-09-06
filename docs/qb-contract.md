@@ -139,6 +139,11 @@ free of escaping doubt.
 
 ### The Formula-URL field
 
+**Step-by-step build instructions, with the exact current Quickbase UI flow, are in
+[`qb-build-sheet.md`](qb-build-sheet.md).** The formula there is the authoritative one — it adds a
+`Case()` block so staff pick readable report-type names while the engine still receives the values
+it expects.
+
 Create a **Formula - URL** field named `Send to Report Engine`, tick **Display as a button**, and
 restrict it by role to staff who start geotech reports.
 
