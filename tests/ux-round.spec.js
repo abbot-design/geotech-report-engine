@@ -607,7 +607,7 @@ test.describe('R — classification split', () => {
       saveDb(); buildReport();
     });
     const html = await page.$eval('#rpt', el => el.innerHTML);
-    expect(html).toContain('Site classification — calculated');
+    expect(html).toContain('Site classification (calculated)');
     expect(html).toContain('Adopted for design');
     expect(html).toContain('Basis of design classification');
     expect(html).toContain('Deep reactive clay over fill.');
