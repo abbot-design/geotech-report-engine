@@ -268,18 +268,23 @@ The Projects one is worth doing even aside from this build — by default that p
 
 ## Step 5e — Job No
 
-`Job No` prints on the report cover, appears in the running header, is required before a report can
-be issued, and names the exported `.json` file. It wants to be unique and consistently formatted.
+**Leave it as free text for now.** `Job No` prints on the report cover, appears in the running
+header, is required before a report can be issued, and names the exported `.json` file — so it
+matters — but *who generates it* is a business question that has not been settled yet. It may be
+Abbot's own reference, or it may be one the client supplies. Do not encode a scheme until that is
+known; a formula field cannot be overridden by hand, so guessing wrong is worse than typing.
 
-Make it a **Formula - Text** field rather than free typing:
+**When it is settled, avoid a visible sequential counter.** An obvious format like `AD-2026-0014`
+tells any client who reads the report roughly how many geotech jobs Abbot has done this year, which
+is not information worth giving away on a document you hand to a customer.
 
-```
-"AD-" & ToText(Year([Date Created])) & "-" & Right("0000" & ToText([Record ID#]), 4)
-```
+A date-derived reference leaks nothing about volume. Ascent Geo use the pattern `AG25231` — firm
+initials, then a date encoded in a way that is not obvious at a glance. The one thing such a scheme
+needs is a way to distinguish two jobs raised on the same day, and a same-day suffix reveals far
+less than a running annual total.
 
-That gives `AD-2026-0014`: unique by construction, nothing to type, no collisions. The trade-off is
-that a formula field cannot be overridden by hand — if a client ever supplies their own job number,
-leave the field as Text and type it instead.
+Worth deciding with Ryan before the first report goes out, since the number appears on every issued
+document and is awkward to change afterwards.
 
 ## Step 5f — Put the form in entry order
 
