@@ -249,6 +249,99 @@ To hide instead of delete: open the **Default report** → report settings → r
 shows a project's geotech reports, and `Add Geotech Report` is the natural way to raise one. That
 button is arguably where the whole workflow starts.
 
+## Step 5d — Make the pickers show names, not record ids
+
+Straight after the relationships, parent records will appear in pickers as bare numbers — `Author`
+showing `8`, `Reviewer` showing `1`. That is not a fault: Quickbase populates a record picker from
+the parent's **key field**, which is `Record ID#`.
+
+Fix it on each **parent** table, not on Geotech Reports. It is a table-level setting, so it corrects
+every picker in the app at once:
+
+| Table | Settings → **Advanced settings** → *Identifying Records* |
+|---|---|
+| **Staff Details** | `Name` |
+| **Projects** | `Project`, `Customer`, `Project Address` *(up to three)* |
+
+The Projects one is worth doing even aside from this build — by default that picker offers
+*Project Type* and *PO Received Date*, neither of which identifies a project to a human.
+
+## Step 5e — Job No
+
+**Leave it as free text for now.** `Job No` prints on the report cover, appears in the running
+header, is required before a report can be issued, and names the exported `.json` file — so it
+matters — but *who generates it* is a business question that has not been settled yet. It may be
+Abbot's own reference, or it may be one the client supplies. Do not encode a scheme until that is
+known; a formula field cannot be overridden by hand, so guessing wrong is worse than typing.
+
+**When it is settled, avoid a visible sequential counter.** An obvious format like `AD-2026-0014`
+tells any client who reads the report roughly how many geotech jobs Abbot has done this year, which
+is not information worth giving away on a document you hand to a customer.
+
+A date-derived reference leaks nothing about volume. Ascent Geo use the pattern `AG25231` — firm
+initials, then a date encoded in a way that is not obvious at a glance. The one thing such a scheme
+needs is a way to distinguish two jobs raised on the same day, and a same-day suffix reveals far
+less than a running annual total.
+
+Worth deciding with Ryan before the first report goes out, since the number appears on every issued
+document and is awkward to change afterwards.
+
+## Step 5f — Put the form in entry order
+
+The default form lists fields in the order they were created, so the record-keeping fields sit in
+the middle of the ones you actually fill in. Display a Geotech Report record, select **Customize
+this form** in the page bar, and on the **Elements** tab use the **Up** / **Down** arrows.
+
+Move these five to the end — they are all filled in *after* a report is issued, not when raising it:
+`Report ID`, `Status`, `Issued Date`, `Site Class (AS 2870)`, `Report PDF`.
+
+Arrows move one slot per click, so select the five as a group and move them together.
+
+> **Fill in Qualifications and Registrations for every engineer who signs.** They live on the Staff
+> Details record, and a blank there means those values simply never reach the report — the button
+> will still work, and the engineer will find themselves retyping their own registration numbers.
+
+## Step 5g — Show the button in the grid on a Project
+
+A Project record displays its geotech reports in an embedded grid. That grid is a *Geotech Reports
+report*, so the button appears there only once it is a column in that report:
+
+**Geotech Reports → Reports → open the report the link uses (normally the default) → Customize →
+add `Send To Report Engine` to the columns → Save.**
+
+The field property *"Add this field to all new reports"* only affects reports created after it was
+ticked; it does not retrofit the existing default report. The button works from the grid because
+those are saved records, so `Record ID#` exists.
+
+## Step 5h — Separate the two addresses on the form
+
+The form ends up showing two addresses with nothing to say which is which, and people will
+reasonably assume one is a mistake. They are different things:
+
+| Field | What it is |
+|---|---|
+| `Project Address` | Read-only lookup — what **Projects** holds. One free-text line, often with no postcode |
+| `Street` · `Suburb` · `State` · `Postcode` | The split address that goes **on the report** |
+
+Make the distinction visible with section headings (Form Builder → any **Make a selection**
+dropdown → **Section heading**):
+
+- **From the project (read-only)** — `Project - Customer`, `Project - Customer Contact`,
+  `Project Detail`, `Project Address`, `Project - Customer Contact Ph`,
+  `Project - Customer Contact Email`
+- **Site address for the report** — `Street`, `Suburb`, `State`, `Postcode`, `Lot and DP`, `Council`
+
+Also relabel the lookup to **`Project Address (as recorded on the project)`**, so it explains itself
+even to someone who never sees the section heading.
+
+**Why keep the lookup at all:** it is the typing head-start — you can see what Projects holds and
+split it into the fields below — and the formula falls back to it when `Street` is blank, so a
+half-filled record still sends the engineer something rather than nothing.
+
+**The stricter alternative**, if the duplication still grates: drop the `If(Trim([Street]) = "", …)`
+fallback from the formula and remove `Project Address` from the form. Conceptually cleaner, but a
+blank `Street` then sends no address at all.
+
 ## Step 6 — Create the button
 
 **Settings** → **Fields** → **+ New Fields** → Field Label `Send to Report Engine`, Type
