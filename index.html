@@ -576,6 +576,19 @@ const PREFILL_MAP = {
   cp:"clientPhone", ce:"clientEmail"
 };
 
+/* Display labels for the update banner. Deliberately separate from
+   PREFILL_MAP, which is the wire contract — this is only ever shown to a
+   human and never affects what is sent or applied. */
+const PREFILL_LABELS = {
+  jobNo:"Job number", client:"Client", careOf:"Care of", projectDesc:"Proposed works",
+  street:"Street", suburb:"Suburb", state:"State", postcode:"Postcode",
+  lotDp:"Lot & DP", council:"Council", author:"Author",
+  authorQual:"Author qualifications", authorReg:"Author registrations",
+  reviewer:"Reviewer", reviewerQual:"Reviewer qualifications",
+  reviewerReg:"Reviewer registrations",
+  clientPhone:"Client phone", clientEmail:"Client email"
+};
+
 /* Returns null when this is an ordinary launch, {bad:...} when a link
    arrived but could not be read. A malformed link must never stop the
    app from starting — it is the only thing an engineer has on site. */
@@ -628,6 +641,39 @@ function findBySource(recordId, type){
   return Object.values(db).find(r => r.source && r.source.recordId===recordId && r.type===type) || null;
 }
 
+/* What the link carries that the report does not already hold. An address
+   corrected in Quickbase after the job was raised is exactly the kind of
+   contradiction this engine exists to prevent, so it has to surface — but
+   never silently, because the engineer may have corrected it themselves and
+   their version may be the better one. */
+function prefillDiff(r, p){
+  const out=[];
+  for(const [k,v] of Object.entries(p.d)){
+    if(!(k in r.d)) continue;
+    const incoming = String(v).replace(/\r\n?/g,"\n");
+    /* A blank in the link means "not set in Quickbase", not "clear this". */
+    if(incoming==="") continue;
+    if(String(r.d[k]) !== incoming) out.push({k, from:String(r.d[k]||""), to:incoming});
+  }
+  return out;
+}
+let pendingUpdates = null;
+
+function showUpdateBanner(diff){
+  const bar=$("prefillbar"); if(!bar) return;
+  pendingUpdates = diff;
+  const rows = diff.map(c=>`<li><b>${esc(PREFILL_LABELS[c.k]||c.k)}</b>: `
+    + `${c.from?`<s>${esc(c.from)}</s> → `:""}${esc(c.to)}</li>`).join("");
+  bar.innerHTML = `<b>Quickbase has ${diff.length===1?"1 value that differs":diff.length+" values that differ"}`
+    + ` from this report.</b><ul>${rows}</ul>`
+    + `<p class="hint">Applying overwrites what is in the report now. Anything you have typed`
+    + ` elsewhere is untouched.</p>`
+    + `<div class="inline" style="margin-top:.7rem">`
+    + `<button type="button" class="primary" id="prefillapply">Apply ${diff.length} update${diff.length===1?"":"s"}</button>`
+    + `<button type="button" id="prefilldismiss">Keep what I have</button></div>`;
+  bar.hidden=false;
+}
+
 function showPrefillBanner(r, applied, rejected){
   const bar=$("prefillbar"); if(!bar) return;
   const rec = r.source && r.source.recordId ? ` from Quickbase record ${esc(r.source.recordId)}` : " from Quickbase";
@@ -655,12 +701,18 @@ function bootPrefill(){
   /* Scrub first, before anything renders and before any await point. */
   try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
   if(p.bad){ note("That Quickbase link could not be read — starting from the report list instead."); return false; }
+  /* A second click in the same tab only changes the fragment, so the page does
+     not reload and last visit's banner would otherwise still be sitting there. */
+  pendingUpdates=null;
+  if($("prefillbar")){ $("prefillbar").hidden=true; $("prefillbar").innerHTML=""; }
 
   const type = TYPES[p.type] ? p.type : "classification";
   const existing = findBySource(p.recordId, type);
   if(existing){
     currentId=existing.id; sectionIdx=0; show("editor"); renderEditor();
-    note("Reopened the report already started for this Quickbase job.");
+    const diff = prefillDiff(existing, p);
+    if(diff.length) showUpdateBanner(diff);
+    else note("Reopened the report already started for this Quickbase job.");
     return true;
   }
   const {r, applied, rejected} = applyPrefill(p);
@@ -1903,7 +1955,17 @@ document.addEventListener("click",e=>{
   if(t.id==="exportthis") exportReport(currentId);
   if(t.id==="qrthis") showHandoffQR();
   if(t.id==="qrclose") $("qrdlg").close();
-  if(t.id==="prefilldismiss"){ $("prefillbar").hidden=true; $("prefillbar").innerHTML=""; }
+  if(t.id==="prefilldismiss"){ pendingUpdates=null; $("prefillbar").hidden=true; $("prefillbar").innerHTML=""; }
+  if(t.id==="prefillapply"){
+    const r=report();
+    if(r && pendingUpdates){
+      const n=pendingUpdates.length;
+      for(const c of pendingUpdates) r.d[c.k]=c.to;
+      pendingUpdates=null; saveDb(); renderEditor({focus:false});
+      $("prefillbar").hidden=true; $("prefillbar").innerHTML="";
+      note(`Updated ${n} field${n===1?"":"s"} from Quickbase.`);
+    }
+  }
   if(t.id==="issuebtn"){
     const rp=report(), d=rp.d;
     if(statusOf(rp)!=="review"){ note("Submit for review first (Review & issue page)."); return; }

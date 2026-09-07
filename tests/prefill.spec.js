@@ -47,6 +47,8 @@ const LANDS_IN = {
   rv: '#f_reviewer',     rq: '#f_reviewerQual', rr: '#f_reviewerReg',
 };
 
+const PAYLOAD_LD = PAYLOAD.ld;
+
 const hash = (obj) => '#' + new URLSearchParams(obj).toString();
 
 async function open(page, payload) {
@@ -205,6 +207,66 @@ test.describe('Quickbase prefill', () => {
     await open(page, { ...PAYLOAD, sa: '' });
     const state = await page.evaluate(() => report().d.state);
     expect(state).toBe('NSW');
+  });
+});
+
+// The office correcting a value after the job was raised is the exact defect
+// the engine exists to prevent, so a re-click must surface the difference.
+test.describe('updates from Quickbase on a second click', () => {
+
+  test('a changed value is offered, not applied silently', async ({ page }) => {
+    await open(page, PAYLOAD);
+    await open(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999' });
+
+    const bar = page.locator('#prefillbar');
+    await expect(bar).toContainText('1 value that differs');
+    await expect(bar).toContainText('Lot & DP');
+    await expect(bar).toContainText('Lot 99 DP 9999999');
+
+    // Not applied until the engineer says so.
+    expect(await page.evaluate(() => report().d.lotDp)).toBe(PAYLOAD_LD);
+  }, );
+
+  test('applying writes the new values and keeps one report', async ({ page }) => {
+    await open(page, PAYLOAD);
+    await open(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999', cc: 'Maitland City Council' });
+    await expect(page.locator('#prefillbar')).toContainText('2 values that differ');
+    await page.click('#prefillapply');
+    const d = await page.evaluate(() => ({ ld: report().d.lotDp, cc: report().d.council }));
+    expect(d.ld).toBe('Lot 99 DP 9999999');
+    expect(d.cc).toBe('Maitland City Council');
+    expect(await page.evaluate(() => Object.keys(db).length)).toBe(1);
+  });
+
+  test('declining keeps what the engineer has', async ({ page }) => {
+    await open(page, PAYLOAD);
+    await open(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999' });
+    await page.click('#prefilldismiss');
+    expect(await page.evaluate(() => report().d.lotDp)).toBe(PAYLOAD_LD);
+    await expect(page.locator('#prefillbar')).toBeHidden();
+  });
+
+  test('an unchanged re-click offers nothing', async ({ page }) => {
+    await open(page, PAYLOAD);
+    await open(page, PAYLOAD);
+    await expect(page.locator('#prefillbar')).toBeHidden();
+  });
+
+  test("a value the engineer typed is offered, not overwritten behind them", async ({ page }) => {
+    await open(page, PAYLOAD);
+    await page.evaluate(() => { report().d.suburb = 'Corrected By Engineer'; saveDb(); });
+    await open(page, PAYLOAD);
+    await expect(page.locator('#prefillbar')).toContainText('Suburb');
+    expect(await page.evaluate(() => report().d.suburb)).toBe('Corrected By Engineer');
+  });
+
+  // A blank in the link means "not set in Quickbase", not "clear this".
+  test('a blank incoming value never wipes an existing one', async ({ page }) => {
+    await open(page, PAYLOAD);
+    const thin = { ...PAYLOAD }; thin.cc = '';
+    await open(page, thin);
+    expect(await page.evaluate(() => report().d.council)).toBe(PAYLOAD.cc);
+    await expect(page.locator('#prefillbar')).toBeHidden();
   });
 });
 
