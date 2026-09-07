@@ -96,7 +96,7 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
     await page.click('#addbh');
     await page.selectOption('select[data-bh="0"][data-f="method"]', 'Push tube (rig)');
     await page.fill('input[data-bh="0"][data-f="depth"]', '1.5');
-    await page.selectOption('select[data-bh="0"][data-f="water"]', 'E — encountered');
+    await page.selectOption('select[data-bh="0"][data-f="water"]', 'E = encountered');
     await page.fill('input[data-bh="0"][data-f="waterDepth"]', '2.4');
     await page.click('[data-addlayer="0"]');
     await page.fill('input[data-bh="0"][data-layer="0"][data-f="from"]', '0');
@@ -133,7 +133,7 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
     expect(html).not.toContain('AS 3798'); // no Fills recommendation given
     expect(html).toContain('BTF-18'); // non-desktop
     expect(html).not.toContain('GeoGuide'); // no hazards commentary
-    expect(html).toContain('E — encountered @ 2.4 m');
+    expect(html).toContain('E = encountered @ 2.4 m');
     expect(html).toContain('>Class<');
     expect(html).not.toContain('>USCS<');
   });
@@ -149,7 +149,7 @@ test.describe('Comprehensive with Fills recommendation + hazards commentary', ()
     await page.click('#addbh');
     await page.selectOption('select[data-bh="0"][data-f="method"]', 'Push tube (rig)');
     await page.fill('input[data-bh="0"][data-f="depth"]', '3');
-    await page.selectOption('select[data-bh="0"][data-f="water"]', 'NE — not encountered');
+    await page.selectOption('select[data-bh="0"][data-f="water"]', 'NE = not encountered');
 
     await gotoTab(page, 'Classification');
     await page.selectOption('#f_siteClass', 'H1');
@@ -162,7 +162,7 @@ test.describe('Comprehensive with Fills recommendation + hazards commentary', ()
     await page.click('#addrec');
     await page.selectOption('select[data-rec="0"][data-f="area"]', 'Fills');
     await page.fill('textarea[data-rec="0"][data-f="desc"]', 'Fill to be placed in accordance with AS 3798.');
-    await page.fill('#f_hazards', 'Sloping site — landslide risk considered low but noted.');
+    await page.fill('#f_hazards', 'Sloping site; landslide risk considered low but noted.');
 
     await gotoTab(page, 'Review & issue');
     await page.fill('#f_limitations', 'Test limitations statement.');
@@ -200,7 +200,7 @@ test.describe('Backward compatibility', () => {
           incLegend: true, incClassDefs: true, incGeneral: true, appGeneral: 'General notes',
           distribution: '', dist: [], recRows: [], awaitingResults: false,
         },
-        boreholes: [{ method: 'Hand auger', depth: '1.2', water: 'E — encountered',
+        boreholes: [{ method: 'Hand auger', depth: '1.2', water: 'E = encountered',
           layers: [{ from: '0', to: '1.2', uscs: 'CL', desc: 'CLAY, brown' }] }], // no waterDepth key
         dcps: [], samples: [], photos: [], plans: [], attachments: [], siteFigure: null, siteFigureCap: '',
         source: null,
@@ -222,8 +222,8 @@ test.describe('Backward compatibility', () => {
     await expect(page.locator('input[data-bh="0"][data-f="waterDepth"]')).toHaveValue('');
 
     const html = await previewHtml(page);
-    expect(html).toContain('E — encountered');
-    expect(html).not.toContain('E — encountered @');
+    expect(html).toContain('E = encountered');
+    expect(html).not.toContain('E = encountered @');
   });
 });
 
@@ -242,4 +242,118 @@ test.describe('Regression sanity', () => {
 
     expect(errors).toEqual([]);
   });
+});
+
+// A date against an unsigned certification line implies a certification that
+// has not happened — on a document a certifier relies on.
+test('an unsigned certification line carries no date', async ({ page }) => {
+  await newReport(page, 'classification');
+  const cert = await page.evaluate(() => {
+    report().d.author = 'Test Author';
+    report().d.reviewer = 'Test Reviewer';
+    saveDb(); buildReport();
+    const t = document.getElementById('rpt').innerText;
+    return t.slice(t.indexOf('For and on behalf of'));
+  });
+  // Both lines unsigned, so neither may show a date.
+  expect(cert.match(/Date: Not signed/g) || []).toHaveLength(2);
+  expect(cert).not.toMatch(/Date: \d/);
+});
+
+test('signing stamps that signatory only, on the day they signed', async ({ page }) => {
+  await newReport(page, 'classification');
+  const cert = await page.evaluate(() => {
+    const d = report().d;
+    d.author = 'Test Author'; d.reviewer = 'Test Reviewer';
+    d.authorSig = 'data:image/png;base64,iVBORw0KGgo=';
+    d.authorSigDate = '2026-09-07';
+    saveDb(); buildReport();
+    const t = document.getElementById('rpt').innerText;
+    return t.slice(t.indexOf('For and on behalf of'));
+  });
+  expect(cert, 'the signatory gets their signing date').toContain('07/09/2026');
+  expect(cert, 'the unsigned reviewer still gets none').toContain('Date: Not signed');
+});
+
+// The date must be the day of signing, not the day the report was created.
+test('the certification date is not the report creation date', async ({ page }) => {
+  await newReport(page, 'classification');
+  const out = await page.evaluate(() => {
+    const d = report().d;
+    d.dateIssued = '2026-01-15';          // report raised in January
+    d.authorSig = 'data:image/png;base64,iVBORw0KGgo=';
+    d.authorSigDate = '2026-06-30';       // signed in June
+    saveDb(); buildReport();
+    const t = document.getElementById('rpt').innerText;
+    return t.slice(t.indexOf('For and on behalf of'));
+  });
+  expect(out).toContain('30/06/2026');
+  expect(out, 'must not fall back to the document date').not.toContain('15/01/2026');
+});
+
+test('placeholders are visually distinct from entered values', async ({ page }) => {
+  await newReport(page, 'classification');
+  await gotoTab(page, 'Setup');
+  const style = await page.evaluate(() => {
+    const el = document.getElementById('f_jobNo');
+    return getComputedStyle(el, '::placeholder').fontStyle;
+  });
+  expect(style, 'placeholder must not read as an entered value').toBe('italic');
+});
+
+// House style: no em dashes anywhere a user can see them, at any status.
+// A hyphen is acceptable where genuinely needed; an em dash is not.
+test('no em dash appears anywhere in the report, at any status', async ({ page }) => {
+  await newReport(page, 'comprehensive');
+  const found = await page.evaluate(() => {
+    const d = report().d;
+    // Fill enough that every branch of the document renders something.
+    d.jobNo = 'ABC-1'; d.author = 'A Author'; d.reviewer = 'A Reviewer';
+    d.client = 'A Client'; d.street = '1 Test St'; d.suburb = 'Testville';
+    d.postcode = '2000'; d.lotDp = 'Lot 1 DP 1'; d.projectDesc = 'A dwelling';
+    d.siteClass = 'M'; d.designClass = 'M'; d.classJust = 'x'; d.windClass = 'N2';
+    d.slopeDeg = '3'; d.geologyUnit = 'Test Unit'; d.fieldDate = '2026-01-01';
+    d.includeSlope = true; d.slopeConclusion = 'x'; d.reportClass = 'B';
+    d.founding = 'x'; d.hazards = 'x';
+    report().boreholes.push({ method: 'Hand auger', depth: '2.0', water: 'NE = not encountered',
+                              waterDepth: '', layers: [{ from: '0', to: '1', uscs: 'SC', desc: 'Clay' }] });
+    d.slopeHazards.push({ desc: '', likelihood: '', consequence: '' });
+    d.riskLifeRows.push({ desc: '', ph: '', psh: '', pts: '', vdt: '' });
+    saveDb();
+
+    const scan = [];
+    for (const status of ['draft', 'review', 'issued']) {
+      report().status = status;
+      report().issued = status === 'issued' ? new Date().toISOString() : null;
+      buildReport();
+      const t = document.getElementById('rpt').innerText;
+      if (t.includes('\u2014')) {
+        const i = t.indexOf('\u2014');
+        scan.push(status + ': …' + t.slice(Math.max(0, i - 45), i + 45) + '…');
+      }
+    }
+    return scan;
+  });
+  expect(found, 'em dash found in the rendered report').toEqual([]);
+});
+
+test('no em dash appears in the editor interface', async ({ page }) => {
+  await newReport(page, 'comprehensive');
+  // Turn on the optional slope module so every tab is reachable.
+  await page.evaluate(() => { report().d.includeSlope = true; saveDb(); renderEditor({ focus: false }); });
+
+  const tabs = await page.$$eval('#tabrail button', els => els.map(e => e.textContent.trim()));
+  const found = [];
+  for (const label of tabs) {
+    await page.click(`#tabrail button:text-is("${label}")`);
+    const hit = await page.evaluate(() => {
+      const t = document.body.innerText;
+      if (!t.includes('\u2014')) return null;
+      const i = t.indexOf('\u2014');
+      return '…' + t.slice(Math.max(0, i - 45), i + 45) + '…';
+    });
+    if (hit) found.push(`${label}: ${hit}`);
+  }
+  expect(tabs.length, 'expected the full tab set').toBeGreaterThan(8);
+  expect(found, 'em dash found in the editor').toEqual([]);
 });
