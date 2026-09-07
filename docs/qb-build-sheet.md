@@ -249,6 +249,53 @@ To hide instead of delete: open the **Default report** → report settings → r
 shows a project's geotech reports, and `Add Geotech Report` is the natural way to raise one. That
 button is arguably where the whole workflow starts.
 
+## Step 5d — Make the pickers show names, not record ids
+
+Straight after the relationships, parent records will appear in pickers as bare numbers — `Author`
+showing `8`, `Reviewer` showing `1`. That is not a fault: Quickbase populates a record picker from
+the parent's **key field**, which is `Record ID#`.
+
+Fix it on each **parent** table, not on Geotech Reports. It is a table-level setting, so it corrects
+every picker in the app at once:
+
+| Table | Settings → **Advanced settings** → *Identifying Records* |
+|---|---|
+| **Staff Details** | `Name` |
+| **Projects** | `Project`, `Customer`, `Project Address` *(up to three)* |
+
+The Projects one is worth doing even aside from this build — by default that picker offers
+*Project Type* and *PO Received Date*, neither of which identifies a project to a human.
+
+## Step 5e — Job No
+
+`Job No` prints on the report cover, appears in the running header, is required before a report can
+be issued, and names the exported `.json` file. It wants to be unique and consistently formatted.
+
+Make it a **Formula - Text** field rather than free typing:
+
+```
+"AD-" & ToText(Year([Date Created])) & "-" & Right("0000" & ToText([Record ID#]), 4)
+```
+
+That gives `AD-2026-0014`: unique by construction, nothing to type, no collisions. The trade-off is
+that a formula field cannot be overridden by hand — if a client ever supplies their own job number,
+leave the field as Text and type it instead.
+
+## Step 5f — Put the form in entry order
+
+The default form lists fields in the order they were created, so the record-keeping fields sit in
+the middle of the ones you actually fill in. Display a Geotech Report record, select **Customize
+this form** in the page bar, and on the **Elements** tab use the **Up** / **Down** arrows.
+
+Move these five to the end — they are all filled in *after* a report is issued, not when raising it:
+`Report ID`, `Status`, `Issued Date`, `Site Class (AS 2870)`, `Report PDF`.
+
+Arrows move one slot per click, so select the five as a group and move them together.
+
+> **Fill in Qualifications and Registrations for every engineer who signs.** They live on the Staff
+> Details record, and a blank there means those values simply never reach the report — the button
+> will still work, and the engineer will find themselves retyping their own registration numbers.
+
 ## Step 6 — Create the button
 
 **Settings** → **Fields** → **+ New Fields** → Field Label `Send to Report Engine`, Type
