@@ -301,6 +301,47 @@ Arrows move one slot per click, so select the five as a group and move them toge
 > Details record, and a blank there means those values simply never reach the report — the button
 > will still work, and the engineer will find themselves retyping their own registration numbers.
 
+## Step 5g — Show the button in the grid on a Project
+
+A Project record displays its geotech reports in an embedded grid. That grid is a *Geotech Reports
+report*, so the button appears there only once it is a column in that report:
+
+**Geotech Reports → Reports → open the report the link uses (normally the default) → Customize →
+add `Send To Report Engine` to the columns → Save.**
+
+The field property *"Add this field to all new reports"* only affects reports created after it was
+ticked; it does not retrofit the existing default report. The button works from the grid because
+those are saved records, so `Record ID#` exists.
+
+## Step 5h — Separate the two addresses on the form
+
+The form ends up showing two addresses with nothing to say which is which, and people will
+reasonably assume one is a mistake. They are different things:
+
+| Field | What it is |
+|---|---|
+| `Project Address` | Read-only lookup — what **Projects** holds. One free-text line, often with no postcode |
+| `Street` · `Suburb` · `State` · `Postcode` | The split address that goes **on the report** |
+
+Make the distinction visible with section headings (Form Builder → any **Make a selection**
+dropdown → **Section heading**):
+
+- **From the project (read-only)** — `Project - Customer`, `Project - Customer Contact`,
+  `Project Detail`, `Project Address`, `Project - Customer Contact Ph`,
+  `Project - Customer Contact Email`
+- **Site address for the report** — `Street`, `Suburb`, `State`, `Postcode`, `Lot and DP`, `Council`
+
+Also relabel the lookup to **`Project Address (as recorded on the project)`**, so it explains itself
+even to someone who never sees the section heading.
+
+**Why keep the lookup at all:** it is the typing head-start — you can see what Projects holds and
+split it into the fields below — and the formula falls back to it when `Street` is blank, so a
+half-filled record still sends the engineer something rather than nothing.
+
+**The stricter alternative**, if the duplication still grates: drop the `If(Trim([Street]) = "", …)`
+fallback from the formula and remove `Project Address` from the form. Conceptually cleaner, but a
+blank `Street` then sends no address at all.
+
 ## Step 6 — Create the button
 
 **Settings** → **Fields** → **+ New Fields** → Field Label `Send to Report Engine`, Type
