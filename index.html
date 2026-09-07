@@ -182,7 +182,10 @@ input:invalid[data-touched],select:invalid[data-touched]{border-color:#c22}
 input[data-need],select[data-need],textarea[data-need]{border-color:#c9a227;background:#fffdf5}
 input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{background:#fff}
 .hint{font-size:.8rem;color:var(--ink-soft);margin:.25rem 0 0}
-::placeholder{color:#6b7780;opacity:1}
+/* Placeholders sit at 4.59:1 on the white field background — AA, with no room
+   to lighten. So the "this is an example, not your data" signal is italic
+   rather than colour, which also avoids relying on colour alone (WCAG 1.4.1). */
+::placeholder{color:#6b7780;opacity:1;font-style:italic}
 .reqmark{font-weight:600;font-size:.72rem;letter-spacing:.02em;color:var(--flag-ink);
   background:#fdeee4;border-radius:4px;padding:.05rem .35rem;margin-left:.35rem;white-space:nowrap;
   display:inline-block}
@@ -542,7 +545,7 @@ function blank(type){
       reportClass:"", geoZone:"", councilGuideline:"",
       siInspection:false, siSubsurface:false, siBedrock:false, siMonitoring:false,
       holds:[...HOLDPOINTS.slice(0,2)], limitations:LIMITATIONS_DEFAULT,
-      authorSig:"", reviewerSig:"",
+      authorSig:"", reviewerSig:"", authorSigDate:"", reviewerSigDate:"",
       incLegend:true, incClassDefs:true, incGeneral:true, appGeneral:GENERAL_NOTES_DEFAULT,
       distribution:"", dist:[], recRows:[], awaitingResults:false },
     boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [], siteFigure:null, siteFigureCap:"",
@@ -1659,12 +1662,12 @@ function buildReport(){
         <p><b>${esc(d.author)||"—"}</b> ${d.authorQual?esc(d.authorQual):""}</p>
         ${d.authorReg?`<p>${nl(d.authorReg)}</p>`:""}
         <p>Author</p>
-        <p>Date: ${dt(d.dateIssued)}</p></div>
+        <p>Date: ${d.authorSigDate?dt(d.authorSigDate):"—"}</p></div>
       <div class="sig">${d.reviewerSig?`<img class="sigimg" src="${d.reviewerSig}" alt="Signature of ${esc(d.reviewer)}">`:`<div class="line"></div>`}
         <p><b>${esc(d.reviewer)||"—"}</b> ${d.reviewerQual?esc(d.reviewerQual):""}</p>
         ${d.reviewerReg?`<p>${nl(d.reviewerReg)}</p>`:""}
         <p>Reviewer</p>
-        <p>Date: ${dt(d.dateIssued)}</p></div>
+        <p>Date: ${d.reviewerSigDate?dt(d.reviewerSigDate):"—"}</p></div>
     </div>`);
 
   addSec("Limitations", sub=>`<p>${nl(d.limitations)}</p>`);
@@ -1909,7 +1912,12 @@ function initSigPads(){
       const [x,y]=pos(ev); ctx.beginPath(); ctx.moveTo(x,y); ev.preventDefault(); });
     cv.addEventListener("pointermove",ev=>{ if(!drawing) return; const [x,y]=pos(ev); ctx.lineTo(x,y); ctx.stroke(); });
     const done=ev=>{ if(!drawing) return; drawing=false;
-      report().d[key]=cv.toDataURL("image/png"); saveDb(); };
+      report().d[key]=cv.toDataURL("image/png");
+      /* The certification date is the date this person signed, not the date
+         the report was created. Stamped here so it cannot appear against an
+         unsigned line and imply a certification that has not happened. */
+      report().d[key+"Date"]=localISODate(new Date());
+      saveDb(); };
     cv.addEventListener("pointerup",done); cv.addEventListener("pointercancel",done);
   });
 }
