@@ -214,20 +214,20 @@ test.describe('multi-jurisdiction registrations', () => {
   // Ryan's own block is the worked example, and note that its first line
   // contains commas — which is why these are newline-separated, not
   // comma-separated.
-  const REG = 'NSW & TAS BDC3431\nVIC PE0000408\nQLD RPEQ 21681';
+  const REG = 'NSW & TAS BDC0000\nVIC PE0000000\nQLD RPEQ 00000';
 
   test('a multi-line registration survives the URL fragment intact', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ar: REG, aq: 'CPEng, NER, 3826369' });
+    await open(page, { ...PAYLOAD, ar: REG, aq: 'CPEng, NER, 1234567' });
     const d = await page.evaluate(() => ({ ar: report().d.authorReg, aq: report().d.authorQual }));
     expect(d.ar).toBe(REG);
     // The comma-bearing qualification line must not be split or mangled.
-    expect(d.aq).toBe('CPEng, NER, 3826369');
+    expect(d.aq).toBe('CPEng, NER, 1234567');
   });
 
   test('Quickbase CRLF is normalised so no stray carriage return renders', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ar: 'NSW BDC3431\r\nVIC PE0000408' });
+    await open(page, { ...PAYLOAD, ar: 'NSW BDC0000\r\nVIC PE0000000' });
     const ar = await page.evaluate(() => report().d.authorReg);
-    expect(ar).toBe('NSW BDC3431\nVIC PE0000408');
+    expect(ar).toBe('NSW BDC0000\nVIC PE0000000');
     expect(ar).not.toContain('\r');
   });
 
@@ -236,9 +236,9 @@ test.describe('multi-jurisdiction registrations', () => {
     await page.click('#previewbtn');
     const html = await page.locator('#rpt').innerHTML();
     // Three jurisdictions, separated by line breaks rather than run together.
-    expect(html).toContain('NSW &amp; TAS BDC3431<br>VIC PE0000408<br>QLD RPEQ 21681');
+    expect(html).toContain('NSW &amp; TAS BDC0000<br>VIC PE0000000<br>QLD RPEQ 00000');
     const text = await page.locator('#rpt').innerText();
-    expect(text).toContain('QLD RPEQ 21681');
+    expect(text).toContain('QLD RPEQ 00000');
   });
 
   test('the ampersand in a registration is escaped, not injected', async ({ page }) => {

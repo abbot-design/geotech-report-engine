@@ -612,8 +612,11 @@ function applyPrefill(p){
        stray \r would survive into the rendered document. */
     r.d[k] = String(v).replace(/\r\n?/g, "\n"); applied++;
   }
-  r.source = { system:"quickbase", app:"bkhasky43",
-               recordId: p.recordId || null, receivedAt: new Date().toISOString() };
+  /* Provenance, and the deduplication key. No app id: the engine only ever
+     talks to one Quickbase app, so hardcoding it into a public page would
+     give away where to aim a phishing attempt for nothing in return. */
+  r.source = { system:"quickbase", recordId: p.recordId || null,
+               receivedAt: new Date().toISOString() };
   return {r, applied, rejected};
 }
 
@@ -963,14 +966,14 @@ setup(r){ return `
 <fieldset><legend>Responsibility</legend>
  <div class="grid">
   ${F("author","Author — engineer",{req:1,ac:"name"})}
-  ${F("authorQual","Author qualifications",{ph:"CPEng, NER, 3826369"})}
+  ${F("authorQual","Author qualifications",{ph:"CPEng, NER, 1234567"})}
   ${F("authorReg","Author registrations",{type:"textarea",wide:1,
-     ph:"NSW & TAS BDC3431\nVIC PE0000408\nQLD RPEQ 21681",
+     ph:"NSW & TAS BDC0000\nVIC PE0000000\nQLD RPEQ 00000",
      hint:"One line per state registration."})}
   ${F("reviewer","Reviewer",{req:1})}
-  ${F("reviewerQual","Reviewer qualifications",{ph:"CPEng, NER, 3826369"})}
+  ${F("reviewerQual","Reviewer qualifications",{ph:"CPEng, NER, 1234567"})}
   ${F("reviewerReg","Reviewer registrations",{type:"textarea",wide:1,
-     ph:"NSW & TAS BDC3431\nVIC PE0000408\nQLD RPEQ 21681",
+     ph:"NSW & TAS BDC0000\nVIC PE0000000\nQLD RPEQ 00000",
      hint:"One line per state registration."})}
  </div>
 </fieldset>`; },

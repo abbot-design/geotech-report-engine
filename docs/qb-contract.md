@@ -4,7 +4,8 @@
 any other way. If you are picking this up cold, read this page first — it is the only place both
 halves are written down.
 
-- **Quickbase** (`ryanchalmers.quickbase.com`, app `bkhasky43`) is the system of record.
+- **Quickbase** is the system of record. (Realm and app id are deliberately not recorded here — this
+  repository is public, and they are reconnaissance for a phishing attempt at no benefit.)
 - **The Report Engine** is a static offline PWA. It has no server, no database and no login.
 - A **Formula-URL button** in Quickbase opens the engine with job details already filled in.
 
@@ -85,7 +86,7 @@ carry no prefix at all. That is what Quickbase generated.
 
 **`ar` and `rr` are multi-line**, one jurisdiction per line — an engineer registered in several
 states holds a separate number in each. Newline-separated, not comma-separated: the qualification
-line is itself `CPEng, NER, 3826369`, so commas are part of the data. Quickbase sends CRLF; the
+line is itself `CPEng, NER, 1234567`, so commas are part of the data. Quickbase sends CRLF; the
 engine normalises it to LF on arrival so no stray carriage return reaches the rendered document.
 
 `ty` must be one of `desktop`, `classification`, `comprehensive`. Anything else falls back to

@@ -4,8 +4,13 @@ One-time setup, roughly 20–30 minutes. It adds no data and changes no existing
 quite invisible, though: creating a relationship also adds two convenience fields to the *parent*
 table, so Projects and Staff Details each gain columns. Step 5c deals with those.
 
-App: **Abbot Design** (`bkhasky43`) · realm `ryanchalmers.quickbase.com`
-Parent table: **Projects** (`bkhasky79`)
+App: **Abbot Design** · Parent table: **Projects**
+
+> The realm and the app and table ids are deliberately not written down here — this repository is
+> public, and while they are not credentials, they tell anyone reading exactly where to aim a
+> phishing attempt at Abbot. You do not need them for this build; every step is done through the
+> Quickbase UI. If you ever want them, they are in your browser's address bar while the app is
+> open: `https://<realm>.quickbase.com/nav/app/<app-id>/table/<table-id>/…`
 
 Field map and rationale live in [`qb-contract.md`](qb-contract.md). This sheet is just the clicks.
 
@@ -131,7 +136,7 @@ Open **Staff Details** → **Settings** → **+ New Fields**:
 
 | Field Label | Type | Example |
 |---|---|---|
-| `Qualifications` | Text | `CPEng, NER, 3826369` |
+| `Qualifications` | Text | `CPEng, NER, 1234567` |
 | `Registrations` | **Text - Multi-line** | see below |
 
 Fill them in for the engineers who sign reports. Leave them blank for admin staff.
@@ -140,21 +145,21 @@ Fill them in for the engineers who sign reports. Leave them blank for admin staf
 several states holds a separate number in each. Ryan's block is the worked example:
 
 ```
-Qualifications:  CPEng, NER, 3826369
+Qualifications:  CPEng, NER, 1234567
 
-Registrations:   NSW & TAS BDC3431
-                 VIC PE0000408
-                 QLD RPEQ 21681
+Registrations:   NSW & TAS BDC0000
+                 VIC PE0000000
+                 QLD RPEQ 00000
 ```
 
-> **Not comma-separated.** The qualification line is itself `CPEng, NER, 3826369` — commas are part
+> **Not comma-separated.** The qualification line is itself `CPEng, NER, 1234567` — commas are part
 > of the data, so splitting on them would break that line into three. Newlines are unambiguous, and
 > the engine prints one per line exactly as typed. The `&` in `NSW & TAS` is safe: it is a field
 > *value*, not part of the formula, and `URLEncode()` handles it.
 
-> ⚠️ **Fix three names while you are here.** Of the 13 staff records, `Ryan`, `Nerrine` and `Max`
-> are first-name only. A certifier-facing report that says *"Prepared by: Ryan"* is not acceptable,
-> and this field is printed verbatim on the cover. The other ten are already full names.
+> ⚠️ **Check every name is a full name while you are here.** Some staff records hold a first name
+> only. This field prints verbatim on the cover, and a certifier-facing report that says
+> *"Prepared by: Ryan"* is not acceptable.
 
 ### 5b. Two relationships, both to Staff Details
 
