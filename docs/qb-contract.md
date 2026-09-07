@@ -20,7 +20,7 @@ not affect it and should stay switched on.
 The data rides in the **URL fragment** — the part after `#`:
 
 ```
-https://clairethetester.github.io/abbot-geotech-report-engine/#qb=1&cl=Smith&ld=Lot%2012%20DP%201234567
+https://abbot-design.github.io/geotech-report-engine/#qb=1&cl=Smith&ld=Lot%2012%20DP%201234567
 ```
 
 **A fragment is never transmitted to the server.** It does not reach GitHub, appear in any access
@@ -181,7 +181,7 @@ Create a **Formula - URL** field named `Send to Report Engine`, tick **Display a
 restrict it by role to staff who start geotech reports.
 
 ```
-var text BASE = "https://clairethetester.github.io/abbot-geotech-report-engine/";
+var text BASE = "https://abbot-design.github.io/geotech-report-engine/";
 
 var text P =
     "#qb=1"

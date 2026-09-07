@@ -254,8 +254,14 @@ button is arguably where the whole workflow starts.
 **Settings** → **Fields** → **+ New Fields** → Field Label `Send to Report Engine`, Type
 **Formula - URL** → **Add**. Then open it and paste this into the **Formula** box:
 
+> ⚠️ **`BASE` will change once more.** This is the GitHub Pages address. When
+> `reports.abbotdesign.com.au` is pointed at Pages, update this one line and nothing else — the app
+> itself uses only relative paths. Do both changes **before** engineers start saving real reports:
+> the browser scopes saved reports to the origin, so changing it strands anything already on a
+> device.
+
 ```
-var text BASE = "https://clairethetester.github.io/abbot-geotech-report-engine/";
+var text BASE = "https://abbot-design.github.io/geotech-report-engine/";
 
 var text TY = Case([Report Type],
   "Desktop assessment",          "desktop",

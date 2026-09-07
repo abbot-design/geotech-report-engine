@@ -5,7 +5,7 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
 
 ## Quick start (free hosting on GitHub Pages)
 
-1. Open the published URL (live: https://clairethetester.github.io/abbot-geotech-report-engine/) on the engineer's phone/tablet:
+1. Open the published URL (live: https://abbot-design.github.io/geotech-report-engine/) on the engineer's phone/tablet:
    - **iOS Safari:** Share → *Add to Home Screen*.
    - **Android Chrome / desktop Chrome & Edge:** the install prompt appears, or menu → *Install app*.
 2. The service worker caches the whole app on first load — after that it runs with **zero signal**,
