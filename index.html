@@ -330,7 +330,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    than running the full measure. */
 .rpt-cover .projblock{max-width:157.5mm;margin-left:auto;margin-right:auto}
 .rpt-cover .projblock p{margin:.15rem 0;font-size:1.05rem}
-/* Prepared for, Job No, and the revision and date, each centred on the page. */
+/* Prepared for, Job No, and the version and date, each centred on the page. */
 .rpt-cover .cmeta{margin:1.4em 0 0;font-size:.95rem;color:#333}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
 /* The specific report type reads as a subtitle under the standing title, so it
@@ -382,10 +382,14 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    row at a 160mm measure and headroom for a long job number. */
 /* A small mark and the date, so a page separated from the report still says
    whose it is and which issue. Draft-dated until the report is issued. */
-.rpthead{display:flex;align-items:center;justify-content:space-between;gap:1rem;
-  padding-bottom:2mm;border-bottom:1px solid var(--line);
-  font-size:.68rem;color:#555;letter-spacing:.02em}
-.rpthead img{height:8mm;width:auto;display:block;flex:none}
+/* Tops aligned rather than centred, so the mark and the date share a baseline
+   at the top of the band. The header carries the compact lockup: at any size a
+   page header can afford, the "consulting engineers" line of the full logo is
+   under a millimetre tall and cannot be read, so it is cropped out rather than
+   reproduced illegibly. */
+.rpthead{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;
+  font-size:.72rem;font-style:normal;color:var(--ink);letter-spacing:.02em}
+.rpthead img{height:12mm;width:auto;display:block;flex:none}
 .rpt footer{margin-top:2rem;border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
@@ -412,7 +416,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rptpage.coverpage .rptpagebody{overflow:visible}
 /* Runs across the head of every page, in the top margin. Mirrors the fixed
    header in the print rules below. */
-.rptpage .rpthead{position:absolute;left:0;right:0;top:6mm;margin:0;
+.rptpage .rpthead{position:absolute;left:0;right:0;top:5mm;margin:0;
   padding-left:25mm;padding-right:25mm}
 /* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
 .rptpage .rptfoot{position:absolute;left:0;right:0;bottom:10mm;margin:0;
@@ -465,7 +469,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
      only way to repeat a header per page, and Safari is the least reliable
      about it. top:-12mm puts it 6mm below the paper edge, inside the 18mm
      top margin, so it cannot collide with the content area. */
-  .rpt .rpthead{position:fixed;left:-25mm;right:-25mm;top:-12mm;margin:0;background:#fff;
+  .rpt .rpthead{position:fixed;left:-25mm;right:-25mm;top:-13mm;margin:0;background:#fff;
     padding-left:25mm;padding-right:25mm}
   /* 25mm sides give a 160mm measure, the same as the reports this is
      benchmarked against. At 16mm the text ran close enough to the paper edge
@@ -1334,7 +1338,7 @@ setup(r){ return `
    <select id="f_type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${r.type===k?" selected":""}>${v.label}</option>`).join("")}</select>
    <p class="hint">Hidden sections keep their data.</p></div>
   ${F("jobNo","Job number",{req:1,ph:"AD-2026-014"})}
-  ${F("revision","Revision",{narrow:1})}
+  ${F("revision","Version",{narrow:1})}
   ${F("dateIssued","Date of issue",{type:"date",narrow:1})}
  </div>
 </fieldset>
@@ -2117,7 +2121,7 @@ function buildReport(){
 
   $("rpt").innerHTML = `
   ${issuedState}
-  <header class="rpthead"><img src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
+  <header class="rpthead"><img src="assets/abbot-logo-mark.svg" alt="${esc(FIRM.name)}">
    <span>${r.issued?"":"Draft · "}${dt(d.dateIssued)}</span></header>
   <div class="rpt-cover">
     <div class="coverphoto" aria-hidden="true"><span class="curve"></span></div>
@@ -2131,14 +2135,13 @@ function buildReport(){
     </div>
     <p class="cmeta"><b>Prepared for:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
     <p class="cmeta"><b>Job No:</b> ${esc(d.jobNo)}</p>
-    <p class="cmeta">Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
+    <p class="cmeta">Version ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
   </div>
 
   <h2>What to do with this report</h2>
   <p>This report supports your approval pathway and informs structural design and construction. Provide a copy to your
      building designer or architect, your structural engineer, your certifier, your builder and your excavation contractor.
-     If any of your project team has questions about its contents, contact Abbot Design for clarification. Most problems
-     are cheapest to solve before concrete is poured.</p>
+     If any of your project team has questions about its contents, contact Abbot Design for clarification.</p>
   ${d.holds.length?`<p><b>Stages at which Abbot Design should be re-engaged:</b></p><ul>${d.holds.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
 
   <h2 class="pagebreak">Geotechnical Assessment</h2>
@@ -2169,7 +2172,7 @@ function buildReport(){
   ${apps.map(a=>`<h2 class="pagebreak">Appendix ${a.letter}: ${esc(a.t)}</h2>${a.html}`).join("")}
 
   <footer class="rptfoot"><span>${esc(FIRM.name)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.abn)}</span>
-   <span>Job ${esc(d.jobNo)} · Rev ${esc(d.revision)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
+   <span>Job ${esc(d.jobNo)} · v${esc(d.revision)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
 
   const pdfAtts=(r.attachments||[]).filter(a=>a.kind==="pdf");
   const gaps = requirements(r);
@@ -2479,7 +2482,7 @@ document.addEventListener("click",e=>{
     const rp=report(), d=rp.d;
     if(statusOf(rp)!=="review"){ note("Submit for review first (Review & issue page)."); return; }
     if(!d.reviewerSig){ note("Reviewer must sign before issue (Review & issue page)."); return; }
-    ask(`Issue this report as final?\n\nAuthor: ${d.author}\nReviewer: ${d.reviewer}\n\nThe watermark is removed and the issue is recorded. Any later edit reopens it as a new draft revision.`,"Issue report")
+    ask(`Issue this report as final?\n\nAuthor: ${d.author}\nReviewer: ${d.reviewer}\n\nThe watermark is removed and the issue is recorded. Any later edit reopens it as a new draft version.`,"Issue report")
       .then(ok=>{ if(ok){ rp.issued=new Date().toISOString(); rp.status="issued"; saveDb(); buildReport(); note("Report issued. Print or save the PDF now."); }});
   }
   if(t.id==="addbh"){ report().boreholes.push({method:"",depth:"",water:"NE = not encountered",waterDepth:"",layers:[]}); saveDb(); renderBoreholes(); renderTabs(); }
@@ -2550,7 +2553,7 @@ function refreshTabsSoon(){ clearTimeout(tabsT);
 function onFieldEdit(e){
   const el=e.target; const r=report(); if(!r) return;
   if(r.issued){ r.issued=null; r.status="draft"; r.d.revision=String((parseInt(r.d.revision)||1)+1);
-    note(`Edited after issue. Reopened as draft, revision ${r.d.revision}.`); renderTabs(); }
+    note(`Edited after issue. Reopened as draft, version ${r.d.revision}.`); renderTabs(); }
   else if((r.status||"draft")==="review"){ r.status="draft";
     note("Returned to draft. Resubmit for review after edits."); renderTabs(); }
   el.setAttribute("data-touched","");

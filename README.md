@@ -62,7 +62,7 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
 | Report element | Why it's required |
 |---|---|
 | Lot & DP + full street address | NSW certifiers reject non-lot-specific reports before CC/CDC issue |
-| Document status table (author/reviewer/revision/date) | Professional accountability; DBP Act duty of care context |
+| Document status table (author/reviewer/version/date) | Professional accountability; DBP Act duty of care context |
 | Single fieldwork date reused everywhere | Prevents the contradictory-dates defect observed in a competitor sample |
 | AS 2870 class + written justification | The engineer classifies; the app never computes the standard |
 | Calculated class vs class adopted for design | AS 2870 allows a more conservative design class; the override is what a certifier checks, so it must be justified |

@@ -54,6 +54,15 @@ test.describe('embedded report font', () => {
       .toContain('./assets/abbot-logo.svg');
   });
 
+  test('the compact header lockup resolves and is cached', async ({ request }) => {
+    const res = await request.get('/assets/abbot-logo-mark.svg');
+    expect(res.status()).toBe(200);
+    const sw = await (await request.get('/sw.js')).text();
+    const shell = JSON.parse(sw.match(/const SHELL = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+    expect(shell, 'pages would print without their mark with no signal')
+      .toContain('./assets/abbot-logo-mark.svg');
+  });
+
   test('the cover photo resolves and is cached', async ({ request }) => {
     const res = await request.get('/assets/cover-photo.jpg');
     expect(res.status()).toBe(200);

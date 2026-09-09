@@ -513,7 +513,8 @@ test.describe('paginated preview', () => {
     });
     expect(g.onCover, 'the cover carries the mark at full size already').toBe(false);
     expect(g.onEveryOther).toBe(true);
-    expect(g.logoHeight, 'a small mark, not the cover logo').toBeLessThan(12);
+    // A readable mark, but still clearly not the 70mm cover logo.
+    expect(g.logoHeight, 'a page mark, not the cover logo').toBeLessThan(25);
     expect(g.topOfPage, 'it sits in the top page margin').toBeLessThan(18);
     expect(g.clearsBody, 'it must not overlap the content area').toBe(true);
     expect(g.text, 'draft dated until the report is issued').toMatch(/^Draft ·/);
