@@ -543,6 +543,53 @@ test.describe('paginated preview', () => {
       expect(toc.leaderBorder, 'dotted leaders made it harder to read').toBe('none');
     });
 
+  for (const type of ['desktop', 'classification', 'comprehensive']) {
+    test(`no page ends on a heading (${type})`, async ({ page }) => {
+      // break-after:avoid handles this in print; the paginated preview has to
+      // implement keep-with-next itself, or a heading strands at a page foot
+      // with the content it introduces overleaf.
+      await newReport(page, type);
+      await gotoTab(page, 'Setup');
+      await page.fill('#f_jobNo', 'AD-1');
+      await gotoTab(page, 'Client & site ID');
+      await page.fill('#f_client', 'ABC Corp');
+      await page.fill('#f_projectDesc', 'New single storey dwelling');
+      await page.fill('#f_street', '123 ABC Street');
+      await page.fill('#f_suburb', 'Newcastle');
+      await page.fill('#f_postcode', '2300');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(500);
+
+      const orphans = await page.$$eval('.rptpage', els => els.map((p, i) => {
+        const last = p.querySelector('.rptpagebody').lastElementChild;
+        return last && /^H[2-4]$/.test(last.tagName)
+          ? `page ${i + 1}: ${last.tagName} "${last.textContent.trim().slice(0, 40)}"` : null;
+      }).filter(Boolean));
+      expect(orphans, 'a heading must travel with the block it introduces').toEqual([]);
+    });
+  }
+
+  test('the contents lists every appendix, marking the absent ones', async ({ page }) => {
+    // A desktop assessment has no site plans, photos or logs, so only D has
+    // content. Listing D alone leaves a reader wondering about A, B and C.
+    await newReport(page, 'desktop');
+    await openPreview(page);
+
+    const rows = await page.$$eval('#rpt .toc li', els => els
+      .filter(li => /Appendix/.test(li.textContent))
+      .map(li => ({ text: li.textContent.trim().replace(/\s+/g, ' '),
+                    empty: li.classList.contains('tempty') })));
+
+    expect(rows.map(r => r.text[0]), 'all four, in order').toEqual(['A', 'B', 'C', 'D']);
+    for (const r of rows.filter(r => r.empty)) {
+      expect(r.text, 'an absent appendix says so').toMatch(/None$/);
+    }
+    expect(rows.some(r => !r.empty), 'and a present one does not').toBe(true);
+  });
+
   test('every page carries the draft stamp until the report is issued', async ({ page }) => {
     await newReport(page, 'classification');
     await openPreview(page);

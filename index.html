@@ -353,6 +353,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0}
 .rpt .toc li b{min-width:2.2rem;color:var(--navy)}
 .rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333}
+.rpt .toc li.tempty{color:#777}
+.rpt .toc li.tempty b{color:#999}
+.rpt .toc .tnone{margin-left:auto;font-style:italic}
 .rpt .toc li.tsub b{min-width:2.4rem;color:#666;font-weight:600}
 .rpt .sigs{display:grid;grid-template-columns:1fr 1fr;gap:2.2rem;margin:1rem 0 .4rem}
 .rpt .sig .line{border-bottom:1.5px solid #333;height:2.7rem;margin-bottom:.35rem}
@@ -442,7 +445,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   main{max-width:none;padding:0;margin:0}
   #preview{border:0;border-radius:0}
   .rpt{padding:0}
-  .rpt h2{break-after:avoid}
+  .rpt h2,.rpt h3,.rpt h4{break-after:avoid}
   .rpt table,.rpt .rowitem,.rpt figure,.rpt .classbox{break-inside:avoid}
   .rpt-cover{break-after:page}
   .pagebreak{break-before:page}
@@ -2116,7 +2119,13 @@ function buildReport(){
   const toc = `<ul class="toc breakafter">
     ${sections.map(s=>`<li><b>${s.n}.</b> ${esc(s.title)}</li>
       ${s.subs.map(x=>`<li class="tsub"><b>${x.no}</b> ${esc(x.t)}</li>`).join("")}`).join("")}
-    ${apps.map(a=>`<li><b>${a.letter}</b> Appendix ${a.letter}: ${esc(a.t)}</li>`).join("")}
+    ${Object.keys(APPENDIX_TITLES).map(L=>{
+      /* Every appendix is listed, present or not. The scheme is fixed, so a
+         contents page showing only Appendix D leaves a reader wondering what
+         happened to A, B and C; saying "None" answers that. */
+      const has = apps.some(a=>a.letter===L);
+      return `<li${has?"":` class="tempty"`}><b>${L}</b> Appendix ${L}: ${esc(APPENDIX_TITLES[L])}${has?"":`<span class="tnone">None</span>`}</li>`;
+    }).join("")}
   </ul>`;
 
   $("rpt").innerHTML = `
@@ -2292,8 +2301,22 @@ function renderPages(){
        counts as overflow, which would otherwise mark the page "grow" and stop
        it being a fixed A4 sheet. */
     if(!el.classList.contains("rpt-cover") && over()){
-      /* Doesn't fit here: try it alone on a fresh page before splitting it. */
-      if(body.children.length > 1){ node.remove(); newPage(); body.append(node); }
+      /* Doesn't fit here: try it alone on a fresh page before splitting it.
+         A heading immediately above it comes too, so a page cannot end on a
+         heading whose content starts overleaf. This is the break-after:avoid
+         in the print rules, which the preview has to implement itself. */
+      if(body.children.length > 1){
+        node.remove();
+        let orphan = body.lastElementChild;
+        orphan = orphan && /^H[2-4]$/.test(orphan.tagName) ? orphan : null;
+        /* Unless the heading is all that page has: moving it would leave the
+           page empty and gain nothing. */
+        if(orphan && body.children.length === 1) orphan = null;
+        if(orphan) orphan.remove();
+        newPage();
+        if(orphan) body.append(orphan);
+        body.append(node);
+      }
       if(over()){
         node.remove();
         if(el.tagName === "TABLE") flowTable(el);
