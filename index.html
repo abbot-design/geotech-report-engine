@@ -201,6 +201,29 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rowitem .inline label{margin-bottom:0}
 .rowitem .inline>div>button{margin-bottom:0}
 .checks{display:grid;gap:.4rem;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.appmap{display:grid;gap:.35rem;margin:.55rem 0 0}
+.approw{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;align-items:baseline;
+  padding:.55rem .65rem;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.approw .applet{font-weight:700;font-size:1.05rem;color:var(--navy)}
+.approw .appcount{font-size:.85rem;color:var(--ink-soft);white-space:nowrap}
+.approw.empty{border-style:dashed;background:transparent}
+.approw.empty .applet,.approw.empty .apptitle{color:var(--ink-soft)}
+.approw .appwhy{grid-column:2/4;font-size:.85rem;color:var(--ink-soft);margin:.15rem 0 0}
+.approw .appwhy button{min-height:0;padding:.1rem .45rem;font-size:.85rem;margin-left:.35rem}
+/* Appendix D is one appendix fed from two places, so its detail is a single
+   panel sharing an edge with the D row of the map above it. Two sibling
+   headings both reading "Appendix D:" read as two separate sections. */
+.approw.anchor{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0}
+.appd{border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;
+  margin:0 0 .3rem;padding:.1rem 1rem 1rem;background:var(--card)}
+.appd-grp{border-top:1px solid var(--line);padding:.85rem 0 0;margin:.85rem 0 0}
+.appd-grp:first-of-type{border-top:0;padding-top:.3rem;margin-top:.3rem}
+.appd-grp legend{font-family:inherit;font-size:.9rem;font-weight:600;
+  color:var(--ink-soft);letter-spacing:0;margin-bottom:.5rem}
+.sheet{display:flex;gap:.55rem;align-items:flex-start;padding:.4rem .2rem;min-height:var(--tap)}
+.sheet input{width:22px;height:22px;min-height:22px;margin-top:2px;flex:none}
+.sheet .smeta{display:block;font-size:.82rem;color:var(--ink-soft);font-weight:400;margin-top:.1rem}
+.sheet .auto{font-style:italic}
 .checks label{display:flex;gap:.55rem;align-items:flex-start;font-weight:400;min-height:var(--tap);padding:.35rem .2rem}
 .checks input{width:22px;height:22px;min-height:22px;margin-top:2px;flex:none}
 
@@ -233,7 +256,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    REPORT PREVIEW + PRINT  (the deliverable document)
    ============================================================ */
 #preview{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:0}
-.rpt{font-family:var(--font);color:#111;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* 1.5 is a screen value. Print body copy sits at 1.3-1.4; the benchmark
+   measures 1.36. Scoped to the report so the interface keeps its own. */
+.rpt{font-family:var(--font);color:#111;line-height:1.4;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--display)}
 .rpt-cover{text-align:center;padding:2.4rem 1rem 2rem;border-top:10px solid var(--navy);border-bottom:6px solid var(--sky)}
 .rpt-cover .firm{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:.14em}
@@ -243,9 +268,17 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt-cover .proj{font-size:1.05rem;margin:.15rem 0}
 .rpt-cover .meta{margin-top:1.6rem;font-size:.95rem;color:#333}
 .rpt table{width:100%;border-collapse:collapse;font-size:.86rem;margin:.6rem 0 1rem}
-.rpt th,.rpt td{border:1px solid #b9b9b9;padding:.4rem .55rem;text-align:left;vertical-align:top}
-.rpt th{background:var(--navy);color:#fff;font-weight:700;border-color:var(--navy)}
-.rpt h2{font-size:1.14rem;font-weight:800;letter-spacing:.02em;border-left:5px solid var(--sky);padding:.15rem 0 .15rem .6rem;margin:1.7rem 0 .6rem;background:linear-gradient(to right,#f0f3f5,transparent 70%)}
+/* Hairline rules and a muted header band. A solid navy header row is heavier
+   than the content it introduces and fights the body copy for attention. */
+.rpt th,.rpt td{border:1px solid #c8cfd4;padding:.38rem .55rem;text-align:left;vertical-align:top}
+.rpt th{background:#dde5e2;color:var(--ink);font-weight:700;border-color:#bcc7c3}
+/* Plain bold with the number hanging in its own column, as report headings
+   are conventionally set. The coloured bar and gradient wash read as a web UI
+   component rather than a document heading. */
+.rpt h2{font-size:1.02rem;font-weight:700;letter-spacing:0;color:var(--ink);
+  padding:0;margin:1.5rem 0 .45rem;background:none;border:0}
+.rpt h2.numbered,.rpt h3.numbered{display:flex;gap:0;align-items:baseline}
+.rpt h2 .secno,.rpt h3 .secno{flex:0 0 2.8rem}
 .rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.93rem;columns:1}
 .rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0;border-bottom:1px dotted #c9c9c9}
 .rpt .toc li b{min-width:2.2rem;color:var(--navy)}
@@ -260,7 +293,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .coverfig img{width:100%;display:block}
 .rpt .coverfig figcaption{font-size:.78rem;color:#555;padding-top:.25rem}
 .rpt .contactstrip{margin-top:1.6rem;font-size:.82rem;color:#333;letter-spacing:.02em}
-.rpt h3{font-size:1rem;margin:1rem 0 .3rem}
+.rpt h3{font-size:1rem;font-weight:700;margin:.9rem 0 .25rem}
 .rpt h4{font-size:.92rem;margin:.5rem 0 .2rem}
 .rpt .tblsig{height:38px;display:block;margin:0 auto .2rem}
 .rpt p{margin:.4rem 0;font-size:.93rem}
@@ -274,10 +307,37 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .photos figure{margin:0;border:1px solid #bbb;padding:.3rem}
 .rpt .photos img{width:100%;display:block}
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
-.rpt footer{margin-top:2rem;border-top:1px solid #999;padding-top:.5rem;font-size:.78rem;color:#444;display:flex;justify-content:space-between;gap:1rem}
+/* Sized so the contact line and the job line sit on one row at a 160mm
+   measure, with headroom for a long job number. */
+.rpt footer{margin-top:2rem;border-top:1px solid #999;padding-top:.5rem;font-size:.65rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
   font-size:5rem;color:rgba(198,40,40,.14);border:6px solid rgba(198,40,40,.14);padding:.4rem 2rem;white-space:nowrap}
+/* Paginated preview. A separate rendering of the report laid into A4 pages,
+   shown instead of the continuous #rpt. Print always prints #rpt, so nothing
+   here can reach the issued document. */
+#rptpages{display:none}
+.pageview #rpt{display:none}
+.pageview #rptpages{display:block;background:var(--paper);padding:1.4rem 1rem 2.4rem;overflow-x:auto}
+.rptpage{position:relative;width:210mm;min-height:297mm;padding:18mm 25mm 24mm;margin:0 auto 2.4rem;
+  background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.18)}
+/* 297mm less the 18mm top and 24mm bottom page margins. Must stay in step with
+   @page, or the preview paginates against the wrong page height. */
+.rptpage .rptpagebody{height:255mm;overflow:hidden;padding:0}
+/* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
+.rptpage .rptfoot{position:absolute;left:16mm;right:16mm;bottom:10mm;margin:0;
+  display:flex;justify-content:space-between;gap:.6rem;
+  border-top:1px solid #999;padding-top:.5rem;font-size:.65rem;color:#444}
+/* A single block taller than a page (an oversized table row) grows its page
+   rather than being clipped: losing content silently would be worse than an
+   honest long page. */
+.rptpage.grow{min-height:0}
+.rptpage.grow .rptpagebody{height:auto;overflow:visible}
+.rptpageno{position:absolute;right:0;bottom:-1.5rem;font-size:.78rem;color:var(--ink-soft)}
+/* The stamp is sized for a full-width continuous column; across a 210mm sheet
+   it runs off the edge and reads as a rendering fault rather than a draft mark. */
+.rptpage .wm b{font-size:3.1rem;border-width:4px}
+.pagenote{max-width:210mm;margin:0 auto .9rem;font-size:.82rem;color:var(--ink-soft)}
 .previewbar{display:flex;gap:.6rem;flex-wrap:wrap;padding:.8rem 1rem;border-bottom:1px solid var(--line);background:#fbfaf7;
   position:sticky;top:var(--headh,52px);z-index:4;border-radius:var(--radius) var(--radius) 0 0}
 
@@ -291,7 +351,26 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   .rpt table,.rpt .rowitem,.rpt figure,.rpt .classbox{break-inside:avoid}
   .rpt-cover{break-after:page}
   .pagebreak{break-before:page}
-  @page{margin:18mm 16mm;size:A4}
+  .breakafter{break-after:page}
+  /* The paginated view is a screen affordance only. Printing always uses the
+     continuous #rpt, so the issued PDF is byte-identical whichever view the
+     engineer happened to be looking at. */
+  #rptpages{display:none !important}
+  .pageview #rpt{display:block !important}
+  /* A running footer on every page. Browsers do not implement the CSS Paged
+     Media @bottom-center box, so the only mechanism available is a fixed
+     element, which the print engine repeats per page. It is drawn inside the
+     enlarged bottom page margin: at bottom:0 it would sit in the content area
+     and the last line of each page would run underneath it.
+
+     Chrome, Edge and Firefox repeat fixed elements reliably; Safari, and iOS
+     Safari in particular, are less consistent. A footer guaranteed on every
+     page is what the Phase 3 server-side render is for. */
+  .rpt .rptfoot{position:fixed;left:-9mm;right:-9mm;bottom:-14mm;margin:0;background:#fff}
+  /* 25mm sides give a 160mm measure, the same as the reports this is
+     benchmarked against. At 16mm the text ran close enough to the paper edge
+     to read as a printed web page rather than a report. */
+  @page{margin:18mm 25mm 24mm;size:A4}
 }
 @media (max-width:560px){
   header.app .markrest{display:none}
@@ -360,11 +439,13 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
     <div id="preview">
       <div class="previewbar no-print">
         <button id="backedit">← Back to editing</button>
+        <button id="pageview" aria-pressed="false">Page view</button>
         <button class="primary" id="printbtn">Print / Save as PDF</button>
         <button id="issuebtn">Issue final report…</button>
       </div>
       <div id="gapbox" class="gaps no-print" style="margin: .8rem 1rem" hidden></div>
       <div class="rpt" id="rpt"></div>
+      <div id="rptpages"></div>
     </div>
   </section>
 </main>
@@ -396,6 +477,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 </div>
 
 <script src="vendor/qrcode.min.js"></script>
+<script src="info-sheets/manifest.js"></script>
 <script>
 "use strict";
 /* ============================================================
@@ -508,8 +590,58 @@ function joinAnd(items){
   return items.slice(0,-1).join(", ")+" and "+items[items.length-1];
 }
 
+/* The appendix scheme is fixed: A site plans, B site photos, C bore logs and
+   DCP results, D information sheets and notes. Letters do not renumber when an
+   appendix is empty, so a cross-reference means the same thing in every Abbot
+   report.
+
+   Titles live here because the editor's appendix map and buildReport() both
+   name them, and two literals drift: C read "Bore logs and DCP results" in the
+   map while the report itself said "Bore logs | DCP test results". */
+const APPENDIX_TITLES = {
+  A: "Site plans",
+  B: "Site photos",
+  C: "Bore logs | DCP test results",
+  D: "Information sheets and notes"
+};
+
+/* ============================================================
+   APPENDIX D INFORMATION SHEETS
+   The registry is info-sheets/manifest.js, loaded as a plain script
+   above. One entry there drives the tick box, the References
+   citation, the Further guidance sentence and the reproduced pages,
+   so the report can never cite a sheet it does not contain or
+   contain one it does not cite.
+   ============================================================ */
+const INFO = (typeof INFO_SHEETS === "object" && INFO_SHEETS) || { sheets:[], pagePaths:()=>[] };
+
+/* d.infoDocs holds only the ids the engineer has explicitly changed:
+   {id:true} ticked on, {id:false} unticked. Anything absent falls
+   through to the manifest's defaultOn rule.
+
+   Storing the resulting list instead would freeze every report against
+   the manifest of the day it was created, so a sheet added later would
+   silently never appear in work already in progress. An override map
+   also survives in the other direction (ticking on a sheet that is off
+   by default), and reports saved before this feature existed migrate
+   with no code at all, because an absent map means "all defaults". */
+function sheetOn(r,s){
+  const ov = r.d.infoDocs || {};
+  return Object.prototype.hasOwnProperty.call(ov,s.id) ? !!ov[s.id] : !!s.defaultOn(r);
+}
+function includedSheets(r){ return INFO.sheets.filter(s=>sheetOn(r,s)); }
+function sheetPages(r){ return includedSheets(r).reduce((n,s)=>n+s.pageCount,0); }
+
+/* Appendix D notes, not a second Limitations section. Four of the seven
+   sentences this used to carry restated LIMITATIONS_DEFAULT almost verbatim
+   (scope, discrete test locations, notify us if conditions differ, ground and
+   groundwater changing over time), so a certifier met the same caveats twice,
+   once in section 8 and again in the appendix. What is left is the part that
+   belongs beside the logs and sheets: how to read the records, and what the
+   engine's recommendations assume. Keep it complementary to
+   LIMITATIONS_DEFAULT, never overlapping. */
 const GENERAL_NOTES_DEFAULT =
-"These notes accompany all geotechnical reports issued by Abbot Design. The report has been prepared for the purpose, project and site described, and relies in part on information supplied by the client or third parties which has not been independently verified except where stated. Geotechnical reporting is interpretative: subsurface conditions are inferred from discrete test locations and may vary between and beyond them, and the interface between materials may be more gradual or abrupt than indicated. Groundwater levels are those observed at the time of investigation and may vary with season, weather and construction activity. Where conditions encountered during construction differ from those described, Abbot Design should be consulted before work proceeds. Recommendations assume competent construction practice and compliance with the referenced Australian Standards. This document remains the intellectual property of Abbot Design and should only be reproduced in full.";
+"These notes accompany all geotechnical reports issued by Abbot Design and should be read together with the logs, test results and information sheets in this appendix. The interface between materials is inferred and may be more gradual or more abrupt than the logs indicate. Water levels shown are those observed at the time of drilling and may not have stabilised. Information supplied by the client or by third parties has been relied on in part and has not been independently verified except where stated. Recommendations assume competent construction practice and compliance with the referenced Australian Standards. This document remains the intellectual property of Abbot Design.";
 
 const LIMITATIONS_DEFAULT =
 "This report has been prepared for the exclusive use of the named client and their nominated agents, for the project and site described, in accordance with the agreed scope of services. It must not be applied to other lots or projects. Subsurface conditions are interpreted from discrete test locations and may vary between and beyond them; if conditions encountered during construction differ from those described, Abbot Design must be notified before work proceeds. Ground and groundwater conditions can change with time, weather and construction activity. This report should be read in full and not separated from its appendices.";
@@ -547,6 +679,7 @@ function blank(type){
       holds:[...HOLDPOINTS.slice(0,2)], limitations:LIMITATIONS_DEFAULT,
       authorSig:"", reviewerSig:"", authorSigDate:"", reviewerSigDate:"",
       incLegend:true, incClassDefs:true, incGeneral:true, appGeneral:GENERAL_NOTES_DEFAULT,
+      infoDocs:{},   /* id -> true/false, only where the engineer overrode the default */
       distribution:"", dist:[], recRows:[], awaitingResults:false },
     boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [], siteFigure:null, siteFigureCap:"",
     source: null   // reserved: quote-system prefill (phase 2)
@@ -872,7 +1005,11 @@ function sectionTouched(r, secId){
   if(secId==="field")  return r.boreholes.length>0 || r.dcps.length>0 || !!r.d.fieldDate;
   if(secId==="lab")    return r.samples.length>0 || (r.attachments||[]).length>0 || !!r.d.labName;
   if(secId==="photos") return r.photos.length>0;
-  if(secId==="site")   return !!r.siteFigure || (r.plans||[]).length>0 ||
+  /* Site plans live with the drawing fields on Client & site ID, so they
+     count towards that section, not Site description. */
+  if(secId==="client") return (r.plans||[]).length>0 ||
+                              (SECFIELDS.client).some(k=>String(r.d[k]||"").trim()!=="");
+  if(secId==="site")   return !!r.siteFigure ||
                               (SECFIELDS.site).some(k=>String(r.d[k]||"").trim()!=="");
   if(secId==="recs")   return r.d.footings.length>0 || (r.d.recRows||[]).length>0 ||
                               (SECFIELDS.recs).some(k=>String(r.d[k]||"").trim()!=="");
@@ -898,6 +1035,8 @@ const $ = id => document.getElementById(id);
 function show(view){
   for(const v of ["home","editor","preview"]) $("view-"+v).hidden = (v!==view);
   $("stepnav").hidden = (view!=="editor");
+  /* After unhiding, so the paginated preview has real heights to measure. */
+  if(view==="preview") applyPreviewMode();
   window.scrollTo(0,0);
 }
 
@@ -1006,6 +1145,88 @@ function F(key,label,opts={}){
 }
 
 /* ---------- section templates ---------- */
+/* ============================================================
+   THE APPENDIX MAP
+   Engineers asked to see what will land in each appendix without
+   having to build a preview first, so this mirrors the fixed
+   A/B/C/D scheme in buildReport() and counts from the same state.
+
+   Letters are fixed rather than sequential: a report with no site
+   plans simply has no Appendix A. Keeping them stable means a
+   cross-reference to "Appendix C" means the same thing in every
+   Abbot report, and the map shows the gap so it reads as a
+   decision rather than a mistake.
+   ============================================================ */
+function appendixMapHTML(r){
+  const d=r.d, plans=r.plans||[], atts=r.attachments||[], desktop=r.type==="desktop";
+  const plural=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
+
+  /* Which generated notes Appendix D will carry, using exactly the
+     conditions buildReport() applies, so the count cannot overstate. */
+  const notes=[];
+  if(!desktop && d.incLegend)    notes.push("legend");
+  if(!desktop && d.incClassDefs) notes.push("class definitions");
+  if(r.type==="comprehensive" && d.includeSlope) notes.push("batter guide");
+  if(d.incGeneral && d.appGeneral) notes.push("general notes");
+  const sheets=includedSheets(r), pages=sheetPages(r);
+
+  const rows=[
+    { L:"A", t:APPENDIX_TITLES.A, n:plans.length, c:plural(plans.length,"plan"),
+      why:"Nothing uploaded yet.", go:"client", goLabel:"Go to Client & site ID" },
+    { L:"B", t:APPENDIX_TITLES.B, n:r.photos.length, c:plural(r.photos.length,"photo"),
+      why:"Nothing captured yet.", go:"photos", goLabel:"Go to Photos" },
+    { L:"C", t:APPENDIX_TITLES.C, n:desktop?0:(r.boreholes.length+r.dcps.length+atts.length),
+      c:[r.boreholes.length?plural(r.boreholes.length,"log"):"",
+         r.dcps.length?`${r.dcps.length} DCP`:"",
+         atts.length?plural(atts.length,"attachment"):""].filter(Boolean).join(" \u00b7 "),
+      why: desktop?"Not part of a desktop assessment.":"No test locations logged yet.",
+      go: desktop?null:"field", goLabel:"Go to Fieldwork" },
+    { L:"D", t:APPENDIX_TITLES.D, n:notes.length+sheets.length,
+      c:[notes.length?plural(notes.length,"note"):"",
+         sheets.length?`${plural(sheets.length,"sheet")}, ${plural(pages,"page")}`:""].filter(Boolean).join(" \u00b7 "),
+      why:"Everything below is switched off.", go:null }
+  ];
+
+  const map=rows.map(x=>`<div class="approw${x.n?"":" empty"}${x.L==="D"?" anchor":""}">
+      <b class="applet">${x.L}</b><span class="apptitle">${esc(x.t)}</span>
+      <span class="appcount">${x.n?esc(x.c):"Not included"}</span>
+      ${x.n?"":`<p class="appwhy">${esc(x.why)}${x.go?`<button type="button" data-goto="${x.go}">${esc(x.goLabel)}</button>`:""}</p>`}
+    </div>`).join("");
+
+  /* Sheets come from the repo, so the only controls here are the ticks.
+     Replacing a sheet is a file swap plus the build tool, never a code
+     change: see info-sheets/README.md. */
+  const sheetRows = INFO.sheets.length ? INFO.sheets.map(x=>{
+    const on=sheetOn(r,x), byDefault=!!x.defaultOn(r);
+    return `<label class="sheet"><input type="checkbox" data-sheet="${esc(x.id)}"${on?" checked":""}>
+      <span>${esc(x.title)}
+        <span class="smeta">${esc(x.short)} \u00b7 ${plural(x.pageCount,"page")} \u00b7 ${esc(x.edition)}
+          \u00b7 <a href="${esc(x.file)}" target="_blank" rel="noopener">View original PDF</a>${
+          byDefault?"":" \u00b7 off by default for this report type"}</span></span></label>`;
+  }).join("") : `<p class="hint">No information sheets are installed in the info-sheets folder</p>`;
+
+  return `<fieldset><legend>Appendices</legend>
+ <p class="hint" style="margin-top:0">What each appendix will hold when this report is built</p>
+ <div class="appmap">${map}</div>
+
+ <div class="appd">
+  <fieldset class="appd-grp"><legend>Notes generated by the engine</legend>
+   <div class="checks">
+    ${desktop?"":`<label><input type="checkbox" data-bool="incLegend"${d.incLegend?" checked":""}> Borehole log legend and investigation methods</label>
+    <label><input type="checkbox" data-bool="incClassDefs"${d.incClassDefs?" checked":""}> AS 2870 site classification definitions</label>`}
+    <label><input type="checkbox" data-bool="incGeneral"${d.incGeneral?" checked":""}> General notes</label>
+   </div>
+   ${r.type==="comprehensive"&&d.includeSlope?`<p class="hint">The batter slope guide is added automatically by the slope module</p>`:""}
+   <div class="grid" style="margin-top:.7rem">${F("appGeneral","General notes text",{type:"textarea",wide:1})}</div>
+  </fieldset>
+  <fieldset class="appd-grp"><legend>Information sheets on file</legend>
+   <p class="hint" style="margin-top:0">Unticking removes the sheet from Appendix D and from References</p>
+   ${sheetRows}
+  </fieldset>
+ </div>
+</fieldset>`;
+}
+
 const TPL = {
 setup(r){ return `
 <fieldset><legend>Report setup</legend>
@@ -1059,6 +1280,14 @@ client(r){ return `
   ${F("drawingNos","Drawing numbers",{ph:"A01–A08"})}
   ${F("drawingsDate","Drawings dated",{type:"date",narrow:1})}
  </div>
+</fieldset>
+<fieldset><legend>Site plans (Appendix A)</legend>
+ <div class="inline">
+  <button type="button" id="addplan">＋ Add site plan image</button>
+  <input type="file" id="planfile" accept="image/*,application/pdf" multiple hidden aria-hidden="true">
+ </div>
+ <p class="hint">PDF or image; each page becomes a page of Appendix A.</p>
+ <div class="photogrid" id="plangrid" style="margin-top:.7rem"></div>
 </fieldset>`; },
 
 site(r){ return `
@@ -1091,14 +1320,6 @@ site(r){ return `
  </div>
  <p class="hint">Appears on the cover and in section 2.</p>
  <div id="sitefigwrap" style="margin-top:.7rem"></div>
-</fieldset>
-<fieldset><legend>Site plans (Appendix A)</legend>
- <div class="inline">
-  <button type="button" id="addplan">＋ Add site plan image</button>
-  <input type="file" id="planfile" accept="image/*,application/pdf" multiple hidden aria-hidden="true">
- </div>
- <p class="hint">PDF or image; each page becomes a page of Appendix A.</p>
- <div class="photogrid" id="plangrid" style="margin-top:.7rem"></div>
 </fieldset>`; },
 
 field(r){ return `
@@ -1259,10 +1480,27 @@ photos(r){ return `
  <div class="photogrid" id="photogrid" style="margin-top:.8rem"></div>
 </fieldset>`; },
 
+/* Sign-off is deliberately the last thing on this tab. Readiness lists what
+   is still outstanding, and signing is the action taken once that list is
+   clear; sitting above it, the signature pads invited a signature before the
+   gaps had been read. The earlier order was not a decision, it arrived with
+   the initial upload. */
 review(r){ return `
 <fieldset><legend>Limitations</legend>
  <div class="grid">${F("limitations","Limitations statement",{type:"textarea",wide:1,req:1})}</div>
 </fieldset>
+${appendixMapHTML(r)}
+<fieldset><legend>Document distribution</legend>
+  <div id="distlist" class="rowlist"></div>
+ <button type="button" id="adddist">+ Add recipient</button>
+</fieldset>
+<fieldset><legend>Readiness</legend>
+ <div id="reviewgaps"></div>
+ <div class="inline" style="margin-top:.8rem">
+  <button type="button" id="exportthis">Export data (.json)</button>
+  <button type="button" id="qrthis">Send to another device</button>
+ </div>
+ </fieldset>
 <fieldset><legend>Sign-off & review</legend>
  <p class="hint" style="margin-top:0">Sign inside the dashed box; anything outside is cut off.</p>
  <div class="grid">
@@ -1288,25 +1526,7 @@ review(r){ return `
   </div>
  </div>
 </fieldset>
-<fieldset><legend>Appendices</legend>
- <div class="checks">
-  <label><input type="checkbox" data-bool="incLegend"${r.d.incLegend?" checked":""}> Borehole log legend &amp; investigation methods</label>
-  <label><input type="checkbox" data-bool="incClassDefs"${r.d.incClassDefs?" checked":""}> AS 2870 site classification definitions</label>
-  <label><input type="checkbox" data-bool="incGeneral"${r.d.incGeneral?" checked":""}> General notes</label>
- </div>
- <div class="grid" style="margin-top:.7rem">${F("appGeneral","General notes text",{type:"textarea",wide:1})}</div>
-</fieldset>
-<fieldset><legend>Document distribution</legend>
-  <div id="distlist" class="rowlist"></div>
- <button type="button" id="adddist">+ Add recipient</button>
-</fieldset>
-<fieldset><legend>Readiness</legend>
- <div id="reviewgaps"></div>
- <div class="inline" style="margin-top:.8rem">
-  <button type="button" id="exportthis">Export data (.json)</button>
-  <button type="button" id="qrthis">Send to another device</button>
- </div>
- </fieldset>`; }
+`; }
 };
 
 /* ---------- dynamic row renderers ---------- */
@@ -1519,10 +1739,14 @@ function buildReport(){
   /* ---- numbered section model: builder gets a sub() helper that
      emits numbered <h3>s and records them for the contents page ---- */
   const sections=[];
-  function addSec(title, builder){
+  /* opts.newPage starts the section on a fresh sheet. Most sections run on
+     from the previous one; the ones a reader looks up rather than reads
+     through get their own page. */
+  function addSec(title, builder, opts){
     const n=sections.length+1; let s=0; const subs=[];
-    const sub=t=>{ s++; subs.push({no:`${n}.${s}`, t}); return `<h3>${n}.${s} ${esc(t)}</h3>`; };
-    sections.push({n, title, subs, html: builder(sub)});
+    const sub=t=>{ s++; subs.push({no:`${n}.${s}`, t});
+      return `<h3 class="numbered"><span class="secno">${n}.${s} </span>${esc(t)}</h3>`; };
+    sections.push({n, title, subs, html: builder(sub), newPage: !!(opts && opts.newPage)});
   }
 
   addSec("Overview", sub=>{
@@ -1676,14 +1900,20 @@ function buildReport(){
     const refs = citedStandards(r).map(s=>STD_CITATIONS[s.ref]).filter(Boolean);
     if(r.dcps.length) refs.push("Standards Australia 1997, Methods of Testing Soils for Engineering Purposes, AS 1289.6.3.2–1997.");
     if(d.windNote) refs.push("Standards Australia/Standards New Zealand 2021, Structural Design Actions Part 2: Wind Actions, AS/NZS 1170.2:2021.");
-    if(r.type==="comprehensive"||d.hazards) refs.push("Australian Geomechanics Society 2007, Practice Note Guidelines for Landslide Risk Management, Australian Geomechanics, vol. 42 no. 1.");
-    if(r.type!=="desktop") refs.push("CSIRO Publishing 2012, Foundation Maintenance and Footing Performance: A Homeowner's Guide, Building Technology File BTF-18.");
+    /* Cited because the assessment applied it, not because of the report
+       type. A flat comprehensive site with no slope module and no hazard
+       commentary never applied the landslide practice note, and listing it
+       there claimed a guideline the report did not use. */
+    if(d.includeSlope||d.hazards) refs.push("Australian Geomechanics Society 2007, Practice Note Guidelines for Landslide Risk Management, Australian Geomechanics, vol. 42 no. 1.");
     if(d.hazards||d.includeSlope) refs.push("Australian Geomechanics Society 2007, Australian GeoGuide LR8: Hillside Construction Practice.");
     if(d.includeSlope && d.councilGuideline) refs.push(`${esc(d.councilGuideline)}.`);
     if(d.geologyMap) refs.push(`Geological mapping: ${esc(d.geologyMap)}.`);
     if(d.drawingsBy) refs.push(`Architectural documentation: ${esc(d.drawingsBy)}${d.drawingNos?`, drawings ${esc(d.drawingNos)}`:""}${d.drawingsDate?`, dated ${dt(d.drawingsDate)}`:""}.`);
+    /* Every appended information sheet cites itself. An unticked sheet is
+       not reproduced, so it must not be listed here either. */
+    includedSheets(r).forEach(x=>refs.push(esc(x.citation)));
     return `<ul>${refs.map(x=>`<li>${x}</li>`).join("")}</ul>`;
-  });
+  }, {newPage:true});
 
   const LEGEND_HTML = `
     <table><tr><th>Moisture</th><th>Consistency (clays)</th><th>Density (sands)</th><th>Water</th></tr>
@@ -1712,10 +1942,13 @@ function buildReport(){
     <p>The suffix “-D” denotes a site subject to deep-seated moisture variation. Reactive sites consist of clay soils
        that swell on wetting and shrink on drying; the resulting movement can damage lightly loaded structures.</p>`;
 
-  const FURTHER_HTML = r.type==="desktop" ? "" : `<h3>Further guidance</h3>
-    <p>For homeowner guidance on foundation maintenance, refer to CSIRO Building Technology File BTF-18,
-       <i>Foundation Maintenance and Footing Performance: A Homeowner's Guide</i>.${d.hazards?` For hillside sites, refer to
-       Australian GeoGuide LR8 (Australian Geomechanics Society).`:""} Copies are available from Abbot Design on request.</p>`;
+  /* Built from the sheets actually appended, so unticking one removes its
+     sentence here as well as its pages and its citation. GeoGuide LR8 is
+     named but not reproduced, so it keeps the "on request" wording. */
+  const furtherBits = includedSheets(r).map(x=>esc(x.furtherInfo)).filter(Boolean);
+  if(r.type!=="desktop" && d.hazards) furtherBits.push("For hillside sites, refer to Australian GeoGuide LR8 "
+    +"(Australian Geomechanics Society), available from Abbot Design on request.");
+  const FURTHER_HTML = furtherBits.length ? `<h3>Further guidance</h3><p>${furtherBits.join(" ")}</p>` : "";
 
   const BORELOG_HTML = (r.boreholes.length||r.dcps.length) ? `
     ${r.boreholes.map((b,i)=>`<h3>Borehole log BH${i+1}</h3>
@@ -1731,11 +1964,11 @@ function buildReport(){
 
   /* Fixed appendix scheme: A site plans · B site photos · C bore logs/DCP · D information sheets */
   const apps=[];
-  if((r.plans||[]).length) apps.push({letter:"A", t:"Site plans",
+  if((r.plans||[]).length) apps.push({letter:"A", t:APPENDIX_TITLES.A,
     html:(r.plans||[]).map((p,i)=>`<figure style="margin:.8rem 0;border:1px solid #bbb;padding:.3rem;${i>0?"break-before:page;":""}">
       <img src="${p.dataUrl}" alt="${esc(p.caption||("Site plan "+(i+1)))}" style="width:100%;display:block">
       <figcaption style="font-size:.8rem;padding-top:.25rem"><b>Plan ${i+1}:</b> ${esc(p.caption||"")}</figcaption></figure>`).join("")});
-  if(r.photos.length) apps.push({letter:"B", t:"Site photos",
+  if(r.photos.length) apps.push({letter:"B", t:APPENDIX_TITLES.B,
     html:`<div class="photos">${r.photos.map((p,i)=>`<figure><img src="${p.dataUrl}" alt="${esc(p.caption||("Site photo "+(i+1)))}">
       <figcaption><b>Photo ${i+1}:</b> ${esc(p.caption||"")}</figcaption></figure>`).join("")}</div>`});
   const atts = r.attachments||[];
@@ -1747,7 +1980,7 @@ function buildReport(){
     ${atts.filter(a=>a.kind==="image").map((a,i)=>`<figure style="margin:.8rem 0;border:1px solid #bbb;padding:.3rem;${i>0?"break-before:page;":""}">
       <img src="${a.dataUrl}" alt="${esc(a.title||"Result document")}" style="width:100%;display:block">
       <figcaption style="font-size:.8rem;padding-top:.25rem"><b>${esc(a.title||a.name)}</b>${a.source?`, ${esc(a.source)}`:""}${a.date?`, ${dt(a.date)}`:""}</figcaption></figure>`).join("")}` : "";
-  if(r.type!=="desktop" && (BORELOG_HTML||ATTACH_HTML)) apps.push({letter:"C", t:"Bore logs | DCP test results", html:BORELOG_HTML+ATTACH_HTML});
+  if(r.type!=="desktop" && (BORELOG_HTML||ATTACH_HTML)) apps.push({letter:"C", t:APPENDIX_TITLES.C, html:BORELOG_HTML+ATTACH_HTML});
   {
     let info="";
     if(r.type!=="desktop" && d.incLegend) info += `<h3>Borehole log legend</h3>`+LEGEND_HTML;
@@ -1760,10 +1993,32 @@ function buildReport(){
     }
     if(d.incGeneral && d.appGeneral) info += `<h3>General notes</h3><p>${nl(d.appGeneral)}</p>`;
     info += FURTHER_HTML;
-    apps.push({letter:"D", t:"Information sheets", html:info});
+
+    /* Reproduced third-party sheets come last, after the notes the engine
+       generates. Each page is an image because the browser print engine
+       cannot merge a PDF into its own output; this is the same mechanism
+       Appendix A already uses for site plans.
+
+       Pages are referenced by URL and never copied into report state:
+       device storage is tight, iOS clears it after seven days, and the
+       .json export and QR handoff have to stay small. */
+    /* No heading and no citation line above the pages: the sheet carries its
+       own title on its first page, and it is cited in References. Repeating it
+       twice more put the same title three times in one document. The sheet is
+       still named in each page's alt text, which is where a screen reader
+       needs it. Every page breaks, so a sheet always starts on a fresh page. */
+    includedSheets(r).forEach(x=>{
+      info += INFO.pagePaths(x).map((src,i)=>`<figure style="margin:.8rem 0;border:1px solid #bbb;padding:.3rem;break-before:page;">
+        <img src="${src}" alt="${esc(x.short)}, page ${i+1} of ${x.pageCount}" style="width:100%;display:block"></figure>`).join("");
+    });
+
+    /* Only raise the appendix if something landed in it. An engineer who
+       turns every note off should not get an empty heading and a TOC line
+       promising an appendix that has no content. */
+    if(info) apps.push({letter:"D", t:APPENDIX_TITLES.D, html:info});
   }
 
-  const toc = `<ul class="toc">
+  const toc = `<ul class="toc breakafter">
     <li><b>·</b> Document status &amp; distribution</li>
     <li><b>·</b> What to do with this report</li>
     ${sections.map(s=>`<li><b>${s.n}.</b> ${esc(s.title)}</li>
@@ -1811,11 +2066,11 @@ function buildReport(){
      are cheapest to solve before concrete is poured.</p>
   ${d.holds.length?`<p><b>Stages at which Abbot Design should be re-engaged:</b></p><ul>${d.holds.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
 
-  ${sections.map(s=>`<h2>${s.n}. ${esc(s.title)}</h2>${s.html}`).join("")}
+  ${sections.map(s=>`<h2 class="numbered${s.newPage?" pagebreak":""}"><span class="secno">${s.n} </span>${esc(s.title)}</h2>${s.html}`).join("")}
 
   ${apps.map(a=>`<h2 class="pagebreak">Appendix ${a.letter}: ${esc(a.t)}</h2>${a.html}`).join("")}
 
-  <footer><span>${esc(FIRM.name)} · ${esc(FIRM.address)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.abn)}</span>
+  <footer class="rptfoot"><span>${esc(FIRM.name)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.abn)}</span>
    <span>Job ${esc(d.jobNo)} · Rev ${esc(d.revision)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
 
   const pdfAtts=(r.attachments||[]).filter(a=>a.kind==="pdf");
@@ -1827,9 +2082,154 @@ function buildReport(){
      merged by the browser. After saving this report as a PDF, append them to it (Download buttons are on the Results page).
      Automatic merging is planned for the server-rendered PDF phase.</p>` : "");
   $("issuebtn").disabled = gaps.length>0 || st!=="review" || !d.reviewerSig;
+  /* Only when the preview is already on screen: on the way in, show() runs
+     this after unhiding the section, so it can be measured. */
+  if(!$("view-preview").hidden) applyPreviewMode();
   $("issuebtn").textContent = st==="issued" ? "Issued ✓" :
     st==="draft" ? "Issue (submit for review first)" :
     !d.reviewerSig ? "Issue (reviewer signature needed)" : "Issue final report…";
+}
+
+/* ============================================================
+   PAGINATED PREVIEW
+
+   Lays the report out into A4 pages so the engineer can see where
+   breaks fall before issuing, instead of reading one continuous
+   column that wraps ~20% wider than the printed page.
+
+   This is a SIMULATION. A browser does not expose its print
+   pagination to the DOM, so this mirrors the rules declared in the
+   @media print block (break-before on .pagebreak, break-after on the
+   cover, tables and figures kept whole) rather than reading the
+   engine's own decisions. The finished PDF is still produced by
+   whichever browser the engineer is using, and iOS Safari, Chrome
+   and Firefox do not agree to the line.
+
+   Print / Save as PDF always prints #rpt, never these pages, so
+   nothing in here can alter the issued document.
+   ============================================================ */
+const PAGEVIEW_KEY = "abbot.pageview";
+const pageViewOn = () => store.get(PAGEVIEW_KEY) === true;
+
+function renderPages(){
+  const host = $("rptpages"), src = $("rpt");
+  host.innerHTML = "";
+  if(!src.children.length) return;
+
+  /* Measuring inside a hidden section reports every height as 0, so nothing
+     ever overflows and the whole report collapses onto a handful of pages
+     broken only where a .pagebreak happens to fall. That failure is quiet and
+     plausible-looking, which makes it worse than no page view at all, so bail
+     out rather than draw a layout that is wrong. applyPreviewMode() is called
+     again from show() once the section is on screen. */
+  if(!host.clientHeight && !host.offsetParent) return;
+
+  /* The draft stamp is absolutely positioned across the whole of #rpt. In a
+     paginated view it belongs to each page: an unissued report has to be
+     unmistakable on every sheet that leaves the office. */
+  const wm = src.querySelector(":scope > .wm");
+
+  /* The footer is a running element, not content: it repeats at the foot of
+     every page rather than flowing, which in the continuous column left it
+     stranded alone at the top of a final sheet. Print does the same thing with
+     position:fixed. */
+  const foot = src.querySelector(":scope > .rptfoot");
+
+  let page, body;
+  function newPage(){
+    page = document.createElement("div"); page.className = "rptpage";
+    body = document.createElement("div"); body.className = "rpt rptpagebody";
+    page.append(body);
+    if(wm) page.append(wm.cloneNode(true));
+    if(foot) page.append(foot.cloneNode(true));
+    host.append(page);
+  }
+  const empty = () => body.children.length === 0;
+  const over  = () => body.scrollHeight > body.clientHeight + 1;
+
+  /* A table too tall for one page is dealt out row by row, repeating its
+     header, which is what break-inside:avoid plus a repeated <th> row does
+     in print. Anything else oversized gets a taller page. */
+  function flowTable(el){
+    const rows = [...el.querySelectorAll("tr")];
+    const head = rows.length && rows[0].querySelector("th") ? rows[0] : null;
+    let t;
+    const fresh = () => {
+      t = el.cloneNode(false);
+      const tb = document.createElement("tbody");
+      if(head) tb.append(head.cloneNode(true));
+      t.append(tb); body.append(t);
+    };
+    fresh();
+    for(let i = head ? 1 : 0; i < rows.length; i++){
+      t.tBodies[0].append(rows[i].cloneNode(true));
+      if(!over()) continue;
+      const spilled = t.tBodies[0].lastElementChild;
+      spilled.remove();
+      if(t.tBodies[0].children.length <= (head ? 1 : 0)){
+        t.tBodies[0].append(spilled); page.classList.add("grow"); continue;
+      }
+      newPage(); fresh();
+      t.tBodies[0].append(rows[i].cloneNode(true));
+    }
+  }
+
+  newPage();
+  for(const el of [...src.children]){
+    if(el === wm || el === foot || el.classList.contains("no-print")) continue;
+
+    if((el.classList.contains("pagebreak") || el.style.breakBefore === "page") && !empty()) newPage();
+
+    const node = el.cloneNode(true);
+    body.append(node);
+    if(over()){
+      /* Doesn't fit here: try it alone on a fresh page before splitting it. */
+      if(body.children.length > 1){ node.remove(); newPage(); body.append(node); }
+      if(over()){
+        node.remove();
+        if(el.tagName === "TABLE") flowTable(el);
+        else { body.append(el.cloneNode(true)); page.classList.add("grow"); }
+      }
+    }
+    if(el.classList.contains("rpt-cover") || el.classList.contains("breakafter")
+       || el.style.breakAfter === "page") newPage();   /* break-after:page */
+  }
+  if(empty() && host.children.length > 1) page.remove();
+
+  const pages = [...host.children];
+  pages.forEach((p,i) => {
+    const n = document.createElement("div");
+    n.className = "rptpageno";
+    /* Page numbers sit outside the sheet, in the gutter: they are a preview
+       affordance, not report content, and must not read as something the
+       printed page carries. */
+    n.textContent = `Page ${i+1} of ${pages.length}`;
+    p.append(n);
+  });
+  host.insertAdjacentHTML("afterbegin",
+    `<p class="pagenote">${pages.length} page(s), approximate. Your browser decides the final breaks when you save the PDF.</p>`);
+
+  /* An image that has not loaded contributes no height, which packs the pages
+     that follow it too tightly. Appendix D is mostly full-page images, so on a
+     cold load that would be most of the document. Lay out again once they have
+     resolved; the guard stops it recurring. */
+  const pending = [...host.querySelectorAll("img")].filter(i => !i.complete);
+  if(pending.length && !renderPages.settling){
+    renderPages.settling = true;
+    Promise.all(pending.map(i => new Promise(done => { i.onload = i.onerror = done; })))
+      .then(() => { renderPages.settling = false; if(pageViewOn()) renderPages(); });
+  }
+}
+
+function applyPreviewMode(){
+  const on = pageViewOn();
+  $("preview").classList.toggle("pageview", on);
+  const btn = $("pageview");
+  if(btn){
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? "Continuous view" : "Page view";
+  }
+  if(on) renderPages(); else $("rptpages").innerHTML = "";
 }
 
 /* ============================================================
@@ -1956,8 +2356,11 @@ document.addEventListener("click",e=>{
   if(t.id==="prevbtn"){ if(sectionIdx>0){sectionIdx--; renderEditor();} }
   if(t.id==="nextbtn"){ const n=visibleSections().length;
     if(sectionIdx<n-1){ sectionIdx++; renderEditor(); } else { buildReport(); show("preview"); } }
+  if(t.dataset.goto){ const i=visibleSections().findIndex(x=>x.id===t.dataset.goto);
+    if(i>=0){ sectionIdx=i; renderEditor(); } }
   if(t.id==="previewbtn"){ buildReport(); show("preview"); }
   if(t.id==="backedit"){ show("editor"); renderEditor(); }
+  if(t.id==="pageview"){ store.set(PAGEVIEW_KEY, !pageViewOn()); applyPreviewMode(); }
   if(t.id==="printbtn"){ window.print();
     if(inFrame()) note("Embedded previews block printing. Open the deployed app in a full browser tab to print or save the PDF."); }
   if(t.id==="exportthis") exportReport(currentId);
@@ -2059,7 +2462,12 @@ function onFieldEdit(e){
     if(["jobNo","street"].includes(el.dataset.k)) $("ctx").textContent=`← ${r.d.street||"New report"} · Job ${r.d.jobNo||"not set"}`; }
   if(el.id==="f_type"){ r.type=el.value; sectionIdx=Math.min(sectionIdx, visibleSections().length-1); saveDb(); renderEditor({focus:false}); return; }
   if(el.id==="f_windNote"){ r.d.windNote=el.checked; saveDb(); }
-  if(el.dataset.bool){ r.d[el.dataset.bool]=el.checked; saveDb(); }
+  if(el.dataset.bool){ r.d[el.dataset.bool]=el.checked; saveDb();
+    /* The appendix map counts these, so it has to be rebuilt to stay honest. */
+    if(/^inc/.test(el.dataset.bool)){ renderEditor({focus:false}); return; } }
+  if(el.dataset.sheet){
+    (r.d.infoDocs = r.d.infoDocs || {})[el.dataset.sheet] = el.checked;
+    saveDb(); renderEditor({focus:false}); return; }
   if(el.dataset.arr){ const arr=r.d[el.dataset.arr];
     if(el.checked && !arr.includes(el.value)) arr.push(el.value);
     if(!el.checked) r.d[el.dataset.arr]=arr.filter(v=>v!==el.value); saveDb(); }

@@ -32,6 +32,20 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
   requirement is met and the report is formally issued with a named reviewer.
 - **PDF via the browser print engine** (File → Print → Save as PDF) — works on iOS, Android,
   Windows, macOS and Linux with no dependencies; A4 print stylesheet included.
+- **Paginated preview**: a *Page view* toggle lays the report into A4 sheets so the engineer can see
+  where breaks fall before issuing, with a running footer and page numbers. It mirrors the rules in
+  the print stylesheet but is a **simulation** — a browser does not expose its print pagination to
+  the DOM, and the finished PDF is still produced by the engineer's own browser. Print always
+  renders `#rpt`, never the paginated copy, so the issued document cannot be affected by it.
+- **Appendix D information sheets**: third-party guidance documents (currently the CSIRO
+  *Foundation Maintenance and Footing Performance* guide) are stored in `info-sheets/` and appended
+  to the report, ticked on by default and unticked per report where they don't apply, e.g. the
+  landslide guidance on a flat site. One manifest entry drives the tick box, the **References**
+  citation, the **Further guidance** sentence and the appended pages together, so the report can
+  never cite a document it doesn't contain or contain one it doesn't cite. The **appendix map** in
+  Review & issue shows what will land in Appendix A, B, C and D before the report is built.
+  **Adding or replacing a sheet is a file swap plus one command, never a code change:
+  `info-sheets/README.md`.**
 - **Export / import (.json)** for device-to-device transfer and office review.
 - **Quickbase prefill**: a Formula-URL button in Abbot Design's Quickbase app opens the engine with
   the client and site details already filled in, carried in the URL fragment — no API, no token and
@@ -56,7 +70,29 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
 | Founding advice & bearing pressures | The differentiator — a report a structural engineer can act on |
 | Hold points list | Keeps the report valid through construction and re-engages Abbot |
 | Limitations | Liability boundary, present in every competitor sample |
+| Appendix D information sheets, per-report | Certifiers and councils expect the referenced guidance appended; a sheet that doesn't apply to the site (landslide guidance on a flat lot) is a defect, not a bonus |
 | DRAFT watermark until issue | Stops incomplete reports reaching clients while lab results are pending |
+
+## Report typography
+
+Benchmarked against a competitor report accepted by NSW certifiers (AscentGeo), measured from the
+PDF rather than eyeballed:
+
+| | Benchmark | This engine |
+|---|---|---|
+| Body size | 11.0 pt | 11.16 pt |
+| Leading | 1.36 | 1.40 |
+| Text measure | 160 mm | 160 mm (210 less 25 mm margins) |
+| Alignment | Justified | **Ragged right** |
+
+**Body copy is deliberately not justified.** Measured, browser justification gives 2.44× word-space
+stretch against the benchmark's 1.19×, because browsers break lines greedily where Word composes a
+paragraph as a whole; even with `hyphens:auto` it only reaches 1.88×. `tests/pageview.spec.js` pins
+all of these, so they cannot drift back.
+
+The remaining known gap is the font stack: `system-ui` resolves to SF Pro on iOS/macOS, Segoe UI on
+Windows and Roboto on Android, so the same report issued from different devices has different line
+breaks and page count. Embedding a metric-consistent face is the fix.
 
 ## Accessibility (WCAG 2.2 AA highlights)
 
@@ -67,6 +103,11 @@ all token pairs; photo inputs have text alternatives via captions.
 
 ## Architecture notes for the next developer
 
+- **`info-sheets/manifest.js` is the only place an Appendix D sheet is described.** It is a plain
+  script in the browser and a CommonJS module under Node, so `tools/build-info-sheets.mjs` reads the
+  same file the app does. Reports store only the engineer's *overrides* (`d.infoDocs`, id to
+  true/false), never the documents, so device storage, the `.json` export and the QR handoff are
+  unaffected, and a sheet added to the manifest later reaches reports already in progress.
 - **`store` wrapper is the only persistence surface.** Phase 2 = replace its four methods with
   Supabase calls (auth + `reports` table with row-level security + Storage bucket for photos).
   Nothing else in the app needs to change.
@@ -82,7 +123,10 @@ all token pairs; photo inputs have text alternatives via captions.
 **Phase 2 — Supabase (free tier):** email/OTP auth, multi-device sync, photo originals in
 Storage, office review workflow (engineer submits → reviewer approves → issue), report templates
 per report type versioned in a table.
-**Phase 3 — output fidelity:** merge uploaded PDF attachments (lab/DCP reports) into the issued document server-side; vendor pdf.js so PDF attachments can render as embedded pages offline; server-side PDF render (headless Chromium via a free-tier worker)
+**Phase 3 — output fidelity:** merge uploaded PDF attachments (lab/DCP reports) into the issued
+document server-side (Appendix D sheets already avoid this by being rasterised at commit time, but
+engineer-uploaded attachments still can't be merged by the browser); vendor pdf.js so PDF
+attachments can render as embedded pages offline; server-side PDF render (headless Chromium via a free-tier worker)
 for pixel-identical letterhead, page headers/footers with job number on every page, and archival
 PDF/A output.
 **Phase 4 — intake integration:** ~~quote/CRM prefill into `report.source`~~ **done — see
@@ -95,6 +139,16 @@ delivery links, and automatic hold-point booking reminders.
 - **Do not upload an older `index.html` over a newer one.** Commit 7048cdc (slope module +
   classification split) was wiped by a later "Add files via upload" and had to be recovered from
   git history. Uploading whole files through the web UI replaces, it does not merge.
+
+- **Never hand-edit the `info-sheets/pages` entries in `sw.js`.** They are generated. Run
+  `node tools/build-info-sheets.mjs` after any change under `info-sheets/`; it rasterises the pages,
+  prunes orphans, rewrites the shell list and bumps the cache version, and it is idempotent.
+  `--check` verifies without writing. `tests/info-sheets.spec.js` fails if the two drift.
+
+- **Cite the edition you actually append.** The engine cited the 2012 CSIRO "BTF-18" edition for a
+  document it never appended; the file now in `info-sheets/` is the December 2024 edition, which has
+  a different title and no BTF-18 designation. Citation and pages come from the same manifest entry
+  so they cannot diverge again.
 
 - **Every URL in the `sw.js` SHELL array must resolve.** `cache.addAll()` rejects on a single 404,
   which rejects the install handler, which means no offline cache at all — the one thing the app
