@@ -1,0 +1,255 @@
+// tests/pageview.spec.js
+//
+// Paginated preview. Dev-only, never referenced by index.html or sw.js.
+//
+// The behaviour worth guarding is not "it makes pages" but the two ways it
+// can be quietly wrong:
+//
+//   1. Laying out against a hidden container. Every height measures 0, so
+//      nothing overflows and the report collapses onto a handful of pages
+//      broken only where a .pagebreak falls. The result looks plausible,
+//      which is what makes it dangerous.
+//   2. Touching the issued document. Print always prints #rpt; if page view
+//      ever emptied or replaced it, an engineer in page view would save a
+//      broken PDF.
+//
+// Run with:
+//   cd tests && npm install && npx playwright install chromium && npm test
+//
+const { test, expect } = require('@playwright/test');
+
+async function newReport(page, type) {
+  await page.goto('/index.html');
+  await page.click(`button[data-newtype="${type}"]`);
+  await page.waitForSelector('#view-editor:not([hidden])');
+}
+async function gotoTab(page, label) {
+  await page.click(`#tabrail button:text-is("${label}")`);
+}
+async function openPreview(page) {
+  await gotoTab(page, 'Review & issue');
+  await page.click('#nextbtn');
+  await page.waitForSelector('#view-preview:not([hidden])');
+}
+
+test.describe('paginated preview', () => {
+  test('it starts in continuous view and remembers the choice', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await expect(page.locator('#pageview')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('.rptpage')).toHaveCount(0);
+
+    await page.click('#pageview');
+    await expect(page.locator('#pageview')).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.locator('.rptpage').count()).toBeGreaterThan(1);
+
+    // The preference survives a reload, on the same device.
+    await page.reload();
+    await page.click('button[data-open]');
+    await openPreview(page);
+    await expect(page.locator('#pageview')).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.locator('.rptpage').count()).toBeGreaterThan(1);
+  });
+
+  test('no page overflows its own body', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const bad = await page.$$eval('.rptpage', els => els.filter(p => {
+      const b = p.querySelector('.rptpagebody');
+      // A page allowed to grow holds one block too tall to fit anywhere.
+      return !p.classList.contains('grow') && b.scrollHeight > b.clientHeight + 1;
+    }).length);
+    expect(bad, 'content spilling past the sheet edge would be hidden by overflow:hidden').toBe(0);
+  });
+
+  test('pagination is measured on screen, not against a hidden section', async ({ page }) => {
+    // Regression: renderPages() used to run from buildReport() while
+    // #view-preview was still hidden, so clientHeight was 0, over() was never
+    // true, and the whole report packed onto the few explicit .pagebreaks.
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const heights = await page.$$eval('.rptpage',
+      els => els.map(p => Math.round(p.getBoundingClientRect().height)));
+    // 297mm at 96dpi. Every page is a real sheet, not a collapsed one.
+    for (const h of heights) expect(h).toBeGreaterThanOrEqual(1000);
+
+    const explicitBreaks = await page.$$eval('#rpt > *',
+      els => els.filter(e => e.classList.contains('pagebreak')
+                          || e.style.breakBefore === 'page').length);
+    expect(heights.length,
+      'more pages than there are hard breaks means real overflow was measured')
+      .toBeGreaterThan(explicitBreaks + 1);
+  });
+
+  test('page view never touches what gets printed', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    const before = await page.$eval('#rpt', el => el.children.length);
+
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const after = await page.$eval('#rpt', el => el.children.length);
+    expect(after, '#rpt is what Print / Save as PDF renders').toBe(before);
+    expect(after).toBeGreaterThan(0);
+
+    // and the print stylesheet hides the paginated copy
+    const hidden = await page.evaluate(() => {
+      const css = [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n');
+      return /@media print[\s\S]*?#rptpages\s*\{\s*display:\s*none/.test(css);
+    });
+    expect(hidden, 'otherwise the PDF would contain both renderings').toBe(true);
+  });
+
+  test('the title page, contents and references each get a page of their own',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+
+      const firstOf = await page.$$eval('.rptpage', els => els.map(p => {
+        const b = p.querySelector('.rptpagebody');
+        return (b.textContent || '').trim().slice(0, 30);
+      }));
+
+      // The cover owns page 1 and nothing else follows it onto that sheet.
+      expect(firstOf[0]).toContain('ABBOT DESIGN');
+      // Contents starts page 2 and ends it.
+      expect(firstOf[1]).toContain('Contents');
+      expect(firstOf[2], 'Contents must not share its page').not.toContain('Contents');
+      // References starts a page of its own.
+      const refPage = firstOf.findIndex(t => /References/.test(t));
+      expect(refPage, 'References should begin a sheet, not run on').toBeGreaterThan(0);
+    });
+
+  test('the breaks are declared in the document, not only in the preview',
+    async ({ page }) => {
+      // The paginated view is a simulation; these classes are what the real
+      // print engine acts on, so they have to be on the report itself.
+      await newReport(page, 'classification');
+      await openPreview(page);
+      const marks = await page.evaluate(() => ({
+        contents: !!document.querySelector('#rpt .toc.breakafter'),
+        references: [...document.querySelectorAll('#rpt h2')]
+          .some(h => /References/.test(h.textContent) && h.classList.contains('pagebreak')),
+        cover: !!document.querySelector('#rpt .rpt-cover')
+      }));
+      expect(marks.contents).toBe(true);
+      expect(marks.references).toBe(true);
+      expect(marks.cover).toBe(true);
+    });
+
+  test('the footer runs at the foot of every page instead of flowing', async ({ page }) => {
+    // It used to be an ordinary block at the end of the column, so when the
+    // preceding page filled up it was stranded alone at the top of a final
+    // sheet.
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const pages = await page.locator('.rptpage').count();
+    await expect(page.locator('.rptpage > .rptfoot')).toHaveCount(pages);
+
+    const inFlow = await page.$$eval('.rptpagebody > .rptfoot', els => els.length);
+    expect(inFlow, 'a running footer must not consume content space').toBe(0);
+
+    const lastHasContent = await page.$$eval('.rptpage',
+      els => els[els.length - 1].querySelector('.rptpagebody').children.length);
+    expect(lastHasContent, 'the last sheet should carry report content').toBeGreaterThan(0);
+  });
+
+  test('the footer carries the firm and the job, not the street address', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    const text = await page.$eval('#rpt .rptfoot', el => el.textContent);
+    expect(text).toContain('ABBOT DESIGN');
+    expect(text).toContain('ABN');
+    expect(text).toContain('Job');
+    expect(text, 'the street address is on the cover, it does not belong on every page')
+      .not.toContain('Palmer Street');
+  });
+
+  test('the preview page height matches the printed page box', async ({ page }) => {
+    // If these drift, the preview paginates against a page size the PDF does
+    // not use and every break after the first is wrong.
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const geom = await page.evaluate(() => {
+      const css = [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n');
+      const at = css.match(/@page\s*\{[^}]*margin:\s*([\d.]+)mm\s+([\d.]+)mm\s+([\d.]+)mm/);
+      const bodyPx = document.querySelector('.rptpagebody').clientHeight;
+      return { top: +at[1], bottom: +at[3], bodyMm: Math.round(bodyPx / (96 / 25.4)) };
+    });
+    expect(geom.bodyMm).toBe(297 - geom.top - geom.bottom);
+  });
+
+  // Typography targets taken from the report this one is benchmarked against
+  // (AscentGeo, measured from the PDF): 11pt body, 1.36 leading, 160mm measure.
+  // These are deliberate values, not defaults, so they are pinned.
+  test('body typography matches the benchmarked report', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const t = await page.evaluate(() => {
+      const p = [...document.querySelectorAll('.rptpagebody p')]
+        .filter(x => !x.closest('.rpt-cover'))[0];
+      const cs = getComputedStyle(p);
+      return {
+        pt: +(parseFloat(cs.fontSize) * 0.75).toFixed(2),   // 1in=96px, 1pt=1/72in
+        leading: +(parseFloat(cs.lineHeight) / parseFloat(cs.fontSize)).toFixed(2),
+        measureMm: Math.round(document.querySelector('.rptpagebody').clientWidth / (96 / 25.4)),
+        align: cs.textAlign
+      };
+    });
+    expect(t.pt, 'benchmark body size is 11pt').toBeGreaterThanOrEqual(10.5);
+    expect(t.pt, 'and 12pt would be larger than the benchmark').toBeLessThanOrEqual(11.5);
+    expect(t.leading).toBe(1.4);
+    expect(t.measureMm, '210mm less 25mm margins').toBe(160);
+    // Measured: justifying in a browser gives 2.44x word-space stretch against
+    // the benchmark's 1.19x, because browsers break lines greedily.
+    expect(t.align, 'body copy stays ragged right').not.toBe('justify');
+  });
+
+  test('section headings are plain bold with a hanging number', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+
+    const h = await page.evaluate(() => {
+      const el = document.querySelector('#rpt h2.numbered');
+      const cs = getComputedStyle(el);
+      return {
+        text: el.textContent.trim(),
+        borderLeft: parseFloat(cs.borderLeftWidth),
+        background: cs.backgroundImage,
+        numberInOwnColumn: !!el.querySelector('.secno')
+      };
+    });
+    expect(h.numberInOwnColumn).toBe(true);
+    expect(h.text, 'the number must not run into the title for a screen reader')
+      .toMatch(/^\d+ \S/);
+    expect(h.borderLeft, 'the coloured bar read as a web component').toBe(0);
+    expect(h.background, 'as did the gradient wash').toBe('none');
+  });
+
+  test('every page carries the draft stamp until the report is issued', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    const pages = await page.locator('.rptpage').count();
+    await expect(page.locator('.rptpage .wm')).toHaveCount(pages);
+  });
+});

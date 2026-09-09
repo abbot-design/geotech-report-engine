@@ -131,7 +131,13 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
     expect(html).toContain('AS 2870');
     expect(html).toContain('AS 4055');
     expect(html).not.toContain('AS 3798'); // no Fills recommendation given
-    expect(html).toContain('BTF-18'); // non-desktop
+    // The CSIRO sheet is appended and cited from info-sheets/manifest.js, and
+    // is on by default for every type except a desktop assessment. This is the
+    // 2024 Building Technology Resources edition; the engine used to cite the
+    // superseded 2012 "BTF-18" designation while appending nothing at all.
+    expect(html).toContain('Foundation Maintenance and Footing Performance');
+    expect(html).toContain('CSIRO 2024');
+    expect(html).not.toContain('BTF-18');
     expect(html).not.toContain('GeoGuide'); // no hazards commentary
     expect(html).toContain('E = encountered @ 2.4 m');
     expect(html).toContain('>Class<');
