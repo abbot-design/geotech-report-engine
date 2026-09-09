@@ -59,8 +59,10 @@ test.describe('paginated preview', () => {
 
     const bad = await page.$$eval('.rptpage', els => els.filter(p => {
       const b = p.querySelector('.rptpagebody');
-      // A page allowed to grow holds one block too tall to fit anywhere.
-      return !p.classList.contains('grow') && b.scrollHeight > b.clientHeight + 1;
+      // A page allowed to grow holds one block too tall to fit anywhere, and
+      // the cover's photo band is positioned past the body's box on purpose.
+      return !p.classList.contains('grow') && !p.classList.contains('coverpage')
+             && b.scrollHeight > b.clientHeight + 1;
     }).length);
     expect(bad, 'content spilling past the sheet edge would be hidden by overflow:hidden').toBe(0);
   });
@@ -313,14 +315,20 @@ test.describe('paginated preview', () => {
         bleedR: mm(r(pg).right - r(ph).right),
         gapToRule: mm(r(ft).top - r(ph).bottom),
         hasCurve: !!ph.querySelector('.curve'),
-        decorative: ph.getAttribute('aria-hidden')
+        decorative: ph.getAttribute('aria-hidden'),
+        pageIsFixedHeight: !pg.classList.contains('grow')
       };
     });
     expect(Math.abs(g.bleedL), 'the band runs to the paper edge').toBeLessThan(1.5);
     expect(Math.abs(g.bleedR)).toBeLessThan(1.5);
-    expect(g.gapToRule, 'the photo stops above the sky rule').toBeGreaterThan(0);
+    // It tucks a hair behind the rule rather than leaving a white sliver, so a
+    // small negative gap is intended; a large one would mean it overshot.
+    expect(g.gapToRule, 'no white is wasted between photo and rule').toBeGreaterThan(-3);
+    expect(g.gapToRule, 'and it does not run past the rule').toBeLessThan(2);
     expect(g.hasCurve, 'the curved top edge is drawn in CSS, not baked into the file').toBe(true);
     expect(g.decorative, 'it carries no information, so screen readers skip it').toBe('true');
+    expect(g.pageIsFixedHeight,
+      'the band overflows the body deliberately; the sheet must stay A4').toBe(true);
   });
 
   test('the head and foot rules are the same distance from the page edges',

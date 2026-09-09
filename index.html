@@ -302,12 +302,26 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    The arc is a white cap whose bottom corners are fully rounded: at the left
    and right edges its depth is zero, in the middle it is the element's full
    height, which is exactly the shape wanted. */
-.rpt-cover .coverphoto{position:absolute;left:0;right:0;bottom:0;height:128mm;
+/* Geometry measured from the reference cover artwork: the band starts 168.3mm
+   down the page, the arc is the bottom of a 658mm circle sagging 17.2mm at the
+   centre, and the photo is carried at 27% opacity.
+
+   bottom:-7mm takes the band past the cover box to meet the sky rule, so no
+   white is wasted between the photo and the footer. It depends on the cover's
+   254mm min-height, which is set just under the 255mm page body: the body
+   cannot grow without breaking pagination. */
+.rpt-cover .coverphoto{position:absolute;left:0;right:0;bottom:-7mm;height:110.7mm;
   overflow:hidden;z-index:0}
 .rpt-cover .coverphoto::before{content:"";position:absolute;inset:0;
-  background:url(assets/cover-photo.jpg) center/cover no-repeat;opacity:.18}
-.rpt-cover .coverphoto .curve{position:absolute;left:0;right:0;top:0;height:19mm;
-  background:#fff;border-radius:0 0 50% 50%/0 0 100% 100%}
+  /* Framed on the deck: it sits in the left third with every post inside the
+     left half, and the image is lifted so the bottom rock is cropped away and
+     the good content is not lost under the white cap. Percentages rather than
+     millimetres so the framing holds at any band width. */
+  background:url(assets/cover-photo.jpg) 84% 19%/124% auto no-repeat;opacity:.27}
+/* A true circle, not an ellipse stretched to the page width: a border-radius
+   arc across the band is far pointier at the ends than the reference curve. */
+.rpt-cover .coverphoto .curve{position:absolute;left:50%;margin-left:-329mm;
+  top:calc(17.2mm - 658mm);width:658mm;height:658mm;border-radius:50%;background:#fff}
 /* Everything else on the cover sits above the band. */
 .rpt-cover > *:not(.coverphoto){position:relative;z-index:1}
 .rpt-cover .logo{display:block;width:100%;max-width:86mm;height:auto;margin:0 auto .9rem}
@@ -2244,7 +2258,11 @@ function renderPages(){
 
     const node = el.cloneNode(true);
     body.append(node);
-    if(over()){
+    /* The cover is a full-page element by construction, and its photo band is
+       deliberately positioned past the body's box to meet the sky rule. That
+       counts as overflow, which would otherwise mark the page "grow" and stop
+       it being a fixed A4 sheet. */
+    if(!el.classList.contains("rpt-cover") && over()){
       /* Doesn't fit here: try it alone on a fresh page before splitting it. */
       if(body.children.length > 1){ node.remove(); newPage(); body.append(node); }
       if(over()){
