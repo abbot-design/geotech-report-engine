@@ -763,7 +763,7 @@ function blank(type){
   return {
     id: "R" + now.getTime().toString(36),
     type, created: now.toISOString(), updated: now.toISOString(), issued: null, status:"draft", submitted:null,
-    d: { jobNo:"", revision:"1", dateIssued: localISODate(now),
+    d: { jobNo:"", version:"1", dateIssued: localISODate(now),
       author:"", authorQual:"", authorReg:"", reviewer:"", reviewerQual:"", reviewerReg:"",
       client:"", careOf:"", clientPhone:"", clientEmail:"",
       projectDesc:"", street:"", suburb:"", state:"NSW", postcode:"", lotDp:"", council:"",
@@ -1089,7 +1089,7 @@ function requirements(r){
   return q;
 }
 /* Which plain fields count as "the user has entered something here".
-   Fields with a non-empty default (revision, dateIssued, state, windRegion,
+   Fields with a non-empty default (version, dateIssued, state, windRegion,
    groundwater, limitations) are deliberately excluded — they are not evidence
    of work done. */
 const SECFIELDS = {
@@ -1338,7 +1338,7 @@ setup(r){ return `
    <select id="f_type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${r.type===k?" selected":""}>${v.label}</option>`).join("")}</select>
    <p class="hint">Hidden sections keep their data.</p></div>
   ${F("jobNo","Job number",{req:1,ph:"AD-2026-014"})}
-  ${F("revision","Version",{narrow:1})}
+  ${F("version","Version",{narrow:1})}
   ${F("dateIssued","Date of issue",{type:"date",narrow:1})}
  </div>
 </fieldset>
@@ -2135,7 +2135,7 @@ function buildReport(){
     </div>
     <p class="cmeta"><b>Prepared for:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
     <p class="cmeta"><b>Job No:</b> ${esc(d.jobNo)}</p>
-    <p class="cmeta">Version ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
+    <p class="cmeta">Version ${esc(d.version)}<br>${dt(d.dateIssued)}</p>
   </div>
 
   <h2>What to do with this report</h2>
@@ -2151,7 +2151,7 @@ function buildReport(){
   <h3>Document status</h3>
   <table>
    <tr><th style="width:12%">Version</th><th>Author</th><th>Reviewer (approved for issue)</th><th style="width:16%">Date</th><th style="width:14%">Status</th></tr>
-   <tr><td>${esc(d.revision)}</td>
+   <tr><td>${esc(d.version)}</td>
        <td style="text-align:center">${d.authorSig?`<img class="tblsig" src="${d.authorSig}" alt="Signature of ${esc(d.author)}">`:""}
            ${esc(d.author)}<br><small>${esc(d.authorQual)}</small>${d.authorReg?`<br><small>${nl(d.authorReg)}</small>`:""}</td>
        <td style="text-align:center">${d.reviewerSig?`<img class="tblsig" src="${d.reviewerSig}" alt="Signature of ${esc(d.reviewer)}">`:""}
@@ -2172,7 +2172,7 @@ function buildReport(){
   ${apps.map(a=>`<h2 class="pagebreak">Appendix ${a.letter}: ${esc(a.t)}</h2>${a.html}`).join("")}
 
   <footer class="rptfoot"><span>${esc(FIRM.name)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.abn)}</span>
-   <span>Job ${esc(d.jobNo)} · v${esc(d.revision)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
+   <span>Job ${esc(d.jobNo)} · v${esc(d.version)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
 
   const pdfAtts=(r.attachments||[]).filter(a=>a.kind==="pdf");
   const gaps = requirements(r);
@@ -2552,8 +2552,8 @@ function refreshTabsSoon(){ clearTimeout(tabsT);
 
 function onFieldEdit(e){
   const el=e.target; const r=report(); if(!r) return;
-  if(r.issued){ r.issued=null; r.status="draft"; r.d.revision=String((parseInt(r.d.revision)||1)+1);
-    note(`Edited after issue. Reopened as draft, version ${r.d.revision}.`); renderTabs(); }
+  if(r.issued){ r.issued=null; r.status="draft"; r.d.version=String((parseInt(r.d.version)||1)+1);
+    note(`Edited after issue. Reopened as draft, version ${r.d.version}.`); renderTabs(); }
   else if((r.status||"draft")==="review"){ r.status="draft";
     note("Returned to draft. Resubmit for review after edits."); renderTabs(); }
   el.setAttribute("data-touched","");

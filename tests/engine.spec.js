@@ -190,7 +190,7 @@ test.describe('Backward compatibility', () => {
         id: 'ROLDTEST', type: 'classification', created: now.toISOString(), updated: now.toISOString(),
         issued: null, status: 'draft', submitted: null,
         d: {
-          jobNo: 'OLD-001', revision: '1', dateIssued: now.toISOString().slice(0, 10),
+          jobNo: 'OLD-001', version: '1', dateIssued: now.toISOString().slice(0, 10),
           author: 'A', authorQual: '', authorReg: '', reviewer: 'R', reviewerQual: '', reviewerReg: '',
           client: 'Old Client', careOf: '', clientPhone: '', clientEmail: '',
           projectDesc: 'Old project', street: '1 Old St', suburb: 'Oldtown', state: 'NSW', postcode: '2000',

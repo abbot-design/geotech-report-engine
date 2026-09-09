@@ -267,7 +267,7 @@ test.describe('paginated preview', () => {
     expect(cover.projLabelInline,
       'Project: runs inline with its value, it is not a heading on its own line').toBe(true);
     expect(cover.projLineCount, 'description, address, lot').toBe(3);
-    expect(cover.metaLines.length, 'Prepared for, Job No, and revision/date').toBe(3);
+    expect(cover.metaLines.length, 'Prepared for, Job No, and version/date').toBe(3);
     expect(cover.metaLines[0]).toMatch(/^Prepared for:/);
     expect(cover.metaLines[1]).toMatch(/^Job No:/);
   });
