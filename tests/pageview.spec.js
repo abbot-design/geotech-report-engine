@@ -242,14 +242,11 @@ test.describe('paginated preview', () => {
     const cover = await page.evaluate(() => {
       const c = document.querySelector('#rpt .rpt-cover');
       const logo = c.querySelector('img.logo');
-      const proj = [...c.querySelectorAll('.proj')][0];
       const groups = [...c.querySelectorAll('.cgroup')];
       return {
         logoSrc: logo && logo.getAttribute('src'),
         logoAlt: logo && logo.getAttribute('alt'),
         title: c.querySelector('h1').textContent.trim(),
-        projLabel: proj.querySelector('b') && proj.querySelector('b').textContent.trim(),
-        projBoldIsLabelOnly: proj.querySelector('b').textContent.trim() === 'Project:',
         groupLabels: groups.map(g => g.querySelector('.chead').textContent.trim()),
         // each label is centred on the page, its lines start at its own left edge
         labelsCentred: groups.every(g => {
@@ -269,9 +266,7 @@ test.describe('paginated preview', () => {
     // A fixed title, not the report type: the type still appears in the
     // Overview sentence, which is where it reads naturally.
     expect(cover.title).toBe('Geotechnical Assessment');
-    expect(cover.projLabel).toBe('Project:');
-    expect(cover.projBoldIsLabelOnly, 'the label is bold, the value is not').toBe(true);
-    expect(cover.groupLabels).toEqual(['Prepared for:', 'Job No:']);
+    expect(cover.groupLabels).toEqual(['Project:', 'Prepared for:', 'Job No:']);
     expect(cover.labelsCentred, 'the labels are centred on the page').toBe(true);
     expect(cover.valuesAlignToLabel,
       'their lines are left aligned to their own label, not to the page').toBe(true);
@@ -304,7 +299,7 @@ test.describe('paginated preview', () => {
       const r = e => e.getBoundingClientRect();
       const ph = pg.querySelector('.rpt-cover .coverphoto');
       // the lowest text on the cover, whichever block it belongs to
-      const lowest = [...pg.querySelectorAll('.rpt-cover .coverblock, .rpt-cover .cgroup')]
+      const lowest = [...pg.querySelectorAll('.rpt-cover .cgroup')]
         .reduce((m, e) => Math.max(m, r(e).bottom), 0);
       const SAG = 17.2;                       // measured from the reference artwork
       return { textBottom: mm(lowest - r(pg).top),
@@ -314,7 +309,7 @@ test.describe('paginated preview', () => {
       .toBeLessThan(g.bandTopAtCentre);
   });
 
-  test('the cover rules run to the paper edge and the detail block is left aligned',
+  test('the cover rules run to the paper edge',
     async ({ page }) => {
       await newReport(page, 'classification');
       await openPreview(page);
@@ -325,15 +320,10 @@ test.describe('paginated preview', () => {
       const geom = await page.evaluate(() => {
         const pg = document.querySelector('.rptpage');
         const cov = pg.querySelector('.rpt-cover');
-        const h1 = cov.querySelector('h1');
-        const blk = cov.querySelector('.coverblock');
-        const rg = document.createRange(); rg.selectNodeContents(h1);
         const r = e => e.getBoundingClientRect();
         return {
           bleedLeft: +(r(cov).left - r(pg).left).toFixed(1),
           bleedRight: +(r(pg).right - r(cov).right).toFixed(1),
-          // the detail block starts where the centred title's text starts
-          offset: +(r(blk).left - rg.getBoundingClientRect().left).toFixed(1),
           // the firm's contact details are on the running footer, not repeated
           // in a block of their own on the cover
           noContactStrip: !cov.querySelector('.contactstrip')
@@ -342,7 +332,6 @@ test.describe('paginated preview', () => {
       // A clip on .rptpagebody used to cut the bleed back to the text measure.
       expect(Math.abs(geom.bleedLeft), 'the rules must reach the paper edge').toBeLessThan(1.5);
       expect(Math.abs(geom.bleedRight)).toBeLessThan(1.5);
-      expect(Math.abs(geom.offset), 'detail block aligns under the title').toBeLessThan(1.5);
       expect(geom.noContactStrip).toBe(true);
     });
 
