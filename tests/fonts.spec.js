@@ -54,6 +54,14 @@ test.describe('embedded report font', () => {
       .toContain('./assets/abbot-logo.svg');
   });
 
+  test('the cover photo resolves and is cached', async ({ request }) => {
+    const res = await request.get('/assets/cover-photo.jpg');
+    expect(res.status()).toBe(200);
+    const sw = await (await request.get('/sw.js')).text();
+    const shell = JSON.parse(sw.match(/const SHELL = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+    expect(shell).toContain('./assets/cover-photo.jpg');
+  });
+
   test('the report actually renders in Carlito, not the platform font', async ({ page }) => {
     await newReport(page, 'classification');
     await openPreview(page);

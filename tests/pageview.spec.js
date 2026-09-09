@@ -296,6 +296,33 @@ test.describe('paginated preview', () => {
       expect(geom.noContactStrip).toBe(true);
     });
 
+  test('the cover photo band bleeds and stops above the sky rule', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const g = await page.evaluate(() => {
+      const mm = px => +(px / (96 / 25.4)).toFixed(1);
+      const pg = document.querySelector('.rptpage');
+      const ph = pg.querySelector('.rpt-cover .coverphoto');
+      const ft = pg.querySelector('.rptfoot');
+      const r = e => e.getBoundingClientRect();
+      return {
+        bleedL: mm(r(ph).left - r(pg).left),
+        bleedR: mm(r(pg).right - r(ph).right),
+        gapToRule: mm(r(ft).top - r(ph).bottom),
+        hasCurve: !!ph.querySelector('.curve'),
+        decorative: ph.getAttribute('aria-hidden')
+      };
+    });
+    expect(Math.abs(g.bleedL), 'the band runs to the paper edge').toBeLessThan(1.5);
+    expect(Math.abs(g.bleedR)).toBeLessThan(1.5);
+    expect(g.gapToRule, 'the photo stops above the sky rule').toBeGreaterThan(0);
+    expect(g.hasCurve, 'the curved top edge is drawn in CSS, not baked into the file').toBe(true);
+    expect(g.decorative, 'it carries no information, so screen readers skip it').toBe('true');
+  });
+
   test('the head and foot rules are the same distance from the page edges',
     async ({ page }) => {
       await newReport(page, 'classification');

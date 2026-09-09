@@ -287,13 +287,29 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 /* The sky rule is no longer the cover's own bottom border: it has become the
    division line above the running footer, set the same distance from the foot
    of the page as the navy rule is from the head. */
-.rpt-cover{min-height:248mm;text-align:center;
+.rpt-cover{position:relative;min-height:254mm;text-align:center;
   padding:2.4rem calc(1rem + var(--bleed)) 2rem;
   margin-left:calc(-1 * var(--bleed));margin-right:calc(-1 * var(--bleed));
   border-top:10px solid var(--navy)}
 /* The wordmark is the logo itself, so the cover carries the artwork rather
    than setting the firm name as type. SVG so it stays crisp at any size and
    costs 14 KB rather than a bitmap. */
+/* A photographic band across the foot of the cover, bleeding to the paper
+   edges and stopping above the sky rule. The fade and the curved top edge are
+   applied here rather than baked into the file, so both can be tuned and the
+   curve stays sharp at any size.
+
+   The arc is a white cap whose bottom corners are fully rounded: at the left
+   and right edges its depth is zero, in the middle it is the element's full
+   height, which is exactly the shape wanted. */
+.rpt-cover .coverphoto{position:absolute;left:0;right:0;bottom:0;height:128mm;
+  overflow:hidden;z-index:0}
+.rpt-cover .coverphoto::before{content:"";position:absolute;inset:0;
+  background:url(assets/cover-photo.jpg) center/cover no-repeat;opacity:.18}
+.rpt-cover .coverphoto .curve{position:absolute;left:0;right:0;top:0;height:19mm;
+  background:#fff;border-radius:0 0 50% 50%/0 0 100% 100%}
+/* Everything else on the cover sits above the band. */
+.rpt-cover > *:not(.coverphoto){position:relative;z-index:1}
 .rpt-cover .logo{display:block;width:100%;max-width:86mm;height:auto;margin:0 auto .9rem}
 .rpt-cover .jobline{margin-top:.9rem}
 /* Everything under the title reads as a left-aligned block rather than a stack
@@ -2075,6 +2091,7 @@ function buildReport(){
   $("rpt").innerHTML = `
   ${issuedState}
   <div class="rpt-cover">
+    <div class="coverphoto" aria-hidden="true"><span class="curve"></span></div>
     <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
     <div class="tag">${esc(FIRM.tagline)}</div>
     <div class="coverblock">
