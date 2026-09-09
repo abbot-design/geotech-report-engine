@@ -10,6 +10,23 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+/* Carlito, metric-compatible with Calibri, SIL OFL. See vendor/fonts/README.md.
+   The report is set in it so an issued PDF is the same document whoever issued
+   it: system-ui resolves to SF Pro on iOS, Segoe UI on Windows and Roboto on
+   Android, which changed line breaks and page count per device.
+
+   font-display:block rather than swap. A flash of fallback text is harmless on
+   screen but would be baked into a PDF saved during the swap window, which is
+   exactly the non-determinism this is here to remove. The files are same-origin
+   and in the service worker shell, so the block period is not perceptible. */
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-regular.woff2) format("woff2");
+  font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-bold.woff2) format("woff2");
+  font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-italic.woff2) format("woff2");
+  font-weight:400;font-style:italic;font-display:block}
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-bolditalic.woff2) format("woff2");
+  font-weight:700;font-style:italic;font-display:block}
 /* ============================================================
    Design tokens — Abbot Design brand palette.
    Navy and sky blue from the logo, limestone paper.
@@ -40,6 +57,8 @@
   --focus:#0f62fe;
   --radius:10px;
   --font:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
+  /* The interface keeps the platform font; the printed document must not. */
+  --report:Carlito,Calibri,system-ui,-apple-system,sans-serif;
   --display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Roboto,Arial,sans-serif;
   --tap:44px; /* WCAG 2.2 target size with headroom */
 }
@@ -258,10 +277,10 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 #preview{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:0}
 /* 1.5 is a screen value. Print body copy sits at 1.3-1.4; the benchmark
    measures 1.36. Scoped to the report so the interface keeps its own. */
-.rpt{font-family:var(--font);color:#111;line-height:1.4;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--display)}
+.rpt{font-family:var(--report);color:#111;line-height:1.4;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--report)}
 .rpt-cover{text-align:center;padding:2.4rem 1rem 2rem;border-top:10px solid var(--navy);border-bottom:6px solid var(--sky)}
-.rpt-cover .firm{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:.14em}
+.rpt-cover .firm{font-family:var(--report);font-size:2rem;font-weight:700;letter-spacing:.14em}
 .rpt-cover .firm span{color:var(--flag)}
 .rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 .4rem}
@@ -302,14 +321,14 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .kv>div:nth-child(odd){background:#e7edf1;font-weight:600;border-right:1px solid #c9d2d8;color:var(--navy-deep)}
 .rpt .kv>div:nth-last-child(-n+2){border-bottom:0}
 .rpt .classbox{border:2px solid var(--navy);padding:.8rem 1rem;margin:.8rem 0;display:flex;gap:1.4rem;flex-wrap:wrap}
-.rpt .classbox b{font-size:1.5rem;font-family:var(--display)}
+.rpt .classbox b{font-size:1.5rem;font-family:var(--report)}
 .rpt .photos{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 .rpt .photos figure{margin:0;border:1px solid #bbb;padding:.3rem}
 .rpt .photos img{width:100%;display:block}
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
-/* Sized so the contact line and the job line sit on one row at a 160mm
-   measure, with headroom for a long job number. */
-.rpt footer{margin-top:2rem;border-top:1px solid #999;padding-top:.5rem;font-size:.65rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
+/* 8pt, matching the benchmark, with the contact line and the job line on one
+   row at a 160mm measure and headroom for a long job number. */
+.rpt footer{margin-top:2rem;border-top:1px solid #999;padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
   font-size:5rem;color:rgba(198,40,40,.14);border:6px solid rgba(198,40,40,.14);padding:.4rem 2rem;white-space:nowrap}
@@ -319,15 +338,19 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 #rptpages{display:none}
 .pageview #rpt{display:none}
 .pageview #rptpages{display:block;background:var(--paper);padding:1.4rem 1rem 2.4rem;overflow-x:auto}
+/* The running footer and the draft stamp are appended to the page, not to the
+   body, so they sit outside .rpt and would otherwise inherit the interface
+   font while the print path used the report font. Set it on the page so every
+   clone matches what prints. */
 .rptpage{position:relative;width:210mm;min-height:297mm;padding:18mm 25mm 24mm;margin:0 auto 2.4rem;
-  background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.18)}
+  background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.18);font-family:var(--report)}
 /* 297mm less the 18mm top and 24mm bottom page margins. Must stay in step with
    @page, or the preview paginates against the wrong page height. */
 .rptpage .rptpagebody{height:255mm;overflow:hidden;padding:0}
 /* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
-.rptpage .rptfoot{position:absolute;left:16mm;right:16mm;bottom:10mm;margin:0;
+.rptpage .rptfoot{position:absolute;left:25mm;right:25mm;bottom:10mm;margin:0;
   display:flex;justify-content:space-between;gap:.6rem;
-  border-top:1px solid #999;padding-top:.5rem;font-size:.65rem;color:#444}
+  border-top:1px solid #999;padding-top:.5rem;font-size:.68rem;color:#444}
 /* A single block taller than a page (an oversized table row) grows its page
    rather than being clipped: losing content silently would be worse than an
    honest long page. */
@@ -366,7 +389,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
      Chrome, Edge and Firefox repeat fixed elements reliably; Safari, and iOS
      Safari in particular, are less consistent. A footer guaranteed on every
      page is what the Phase 3 server-side render is for. */
-  .rpt .rptfoot{position:fixed;left:-9mm;right:-9mm;bottom:-14mm;margin:0;background:#fff}
+  .rpt .rptfoot{position:fixed;left:0;right:0;bottom:-14mm;margin:0;background:#fff}
   /* 25mm sides give a 160mm measure, the same as the reports this is
      benchmarked against. At 16mm the text ran close enough to the paper edge
      to read as a printed web page rather than a report. */

@@ -83,6 +83,8 @@ PDF rather than eyeballed:
 | Body size | 11.0 pt | 11.16 pt |
 | Leading | 1.36 | 1.40 |
 | Text measure | 160 mm | 160 mm (210 less 25 mm margins) |
+| Font | Calibri (embedded) | **Carlito (embedded)**, metric-compatible with Calibri |
+| Characters/line | ~100 | ~95 |
 | Alignment | Justified | **Ragged right** |
 
 **Body copy is deliberately not justified.** Measured, browser justification gives 2.44× word-space
@@ -90,9 +92,16 @@ stretch against the benchmark's 1.19×, because browsers break lines greedily wh
 paragraph as a whole; even with `hyphens:auto` it only reaches 1.88×. `tests/pageview.spec.js` pins
 all of these, so they cannot drift back.
 
-The remaining known gap is the font stack: `system-ui` resolves to SF Pro on iOS/macOS, Segoe UI on
-Windows and Roboto on Android, so the same report issued from different devices has different line
-breaks and page count. Embedding a metric-consistent face is the fix.
+**The report is set in an embedded font, the interface is not.** `system-ui` resolves to SF Pro on
+iOS/macOS, Segoe UI on Windows and Roboto on Android, so the same report issued from different
+devices used to have different line breaks and a different page count. The report now uses Carlito
+(`vendor/fonts/`, SIL OFL, ~180 KB for four faces), which is metric-compatible with Calibri, so
+output is identical on every device *and* matches the standard the reports are benchmarked against.
+The editor keeps the platform font — only the printed document needs to be device-independent.
+
+Watch for anything appended to a preview page rather than to `.rptpagebody`: it sits outside `.rpt`
+and will inherit the interface font unless `.rptpage` covers it. That bug made the preview measure a
+footer 11 mm wider than it prints.
 
 ## Accessibility (WCAG 2.2 AA highlights)
 
