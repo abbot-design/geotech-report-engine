@@ -302,7 +302,12 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt-cover .coverblock{display:inline-block;text-align:left;max-width:100%}
 .rpt-cover .coverblock h1{text-align:center}
 .rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
-.rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 .4rem}
+.rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
+/* The specific report type reads as a subtitle under the standing title, so it
+   is centred with it rather than left aligned with the detail block. One blank
+   line above it, two below, in its own line-heights. */
+.rpt-cover .rtype{font-size:1.05rem;margin:1.4em 0 2.8em}
+.rpt-cover .coverblock h1,.rpt-cover .coverblock .rtype{text-align:center}
 .rpt-cover .proj{font-size:1.05rem;margin:.15rem 0}
 .rpt-cover .meta{margin-top:1.6rem;font-size:.95rem;color:#333}
 .rpt table{width:100%;border-collapse:collapse;font-size:.86rem;margin:.6rem 0 1rem}
@@ -2088,6 +2093,7 @@ function buildReport(){
     <div class="tag">${esc(FIRM.tagline)}</div>
     <div class="coverblock">
       <h1>Geotechnical Assessment</h1>
+      <p class="rtype">${esc(TYPES[r.type].label)}</p>
       <p class="proj"><b>Project:</b> ${esc(d.projectDesc||"Proposed development")}</p>
       <p class="proj">${esc(addr)}</p>
       <p class="proj">${esc(d.lotDp)}</p>
