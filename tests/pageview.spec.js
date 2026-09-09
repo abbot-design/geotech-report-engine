@@ -59,8 +59,10 @@ test.describe('paginated preview', () => {
 
     const bad = await page.$$eval('.rptpage', els => els.filter(p => {
       const b = p.querySelector('.rptpagebody');
-      // A page allowed to grow holds one block too tall to fit anywhere.
-      return !p.classList.contains('grow') && b.scrollHeight > b.clientHeight + 1;
+      // A page allowed to grow holds one block too tall to fit anywhere, and
+      // the cover's photo band is positioned past the body's box on purpose.
+      return !p.classList.contains('grow') && !p.classList.contains('coverpage')
+             && b.scrollHeight > b.clientHeight + 1;
     }).length);
     expect(bad, 'content spilling past the sheet edge would be hidden by overflow:hidden').toBe(0);
   });
@@ -120,7 +122,14 @@ test.describe('paginated preview', () => {
       }));
 
       // The cover owns page 1 and nothing else follows it onto that sheet.
-      expect(firstOf[0]).toContain('ABBOT DESIGN');
+      // Assert the cover element, not its wordmark: the firm name is artwork,
+      // so it is not in the text content.
+      const coverOnPageOne = await page.$$eval('.rptpage',
+        els => !!els[0].querySelector('.rpt-cover') &&
+               els.slice(1).every(p => !p.querySelector('.rpt-cover')));
+      expect(coverOnPageOne).toBe(true);
+      const coverTitle = await page.$eval('.rptpage .rpt-cover h1', el => el.textContent.trim());
+      expect(coverTitle).toBe('Geotechnical Assessment');
       // Contents starts page 2 and ends it.
       expect(firstOf[1]).toContain('Contents');
       expect(firstOf[2], 'Contents must not share its page').not.toContain('Contents');
@@ -214,13 +223,246 @@ test.describe('paginated preview', () => {
         align: cs.textAlign
       };
     });
-    expect(t.pt, 'benchmark body size is 11pt').toBeGreaterThanOrEqual(10.5);
-    expect(t.pt, 'and 12pt would be larger than the benchmark').toBeLessThanOrEqual(11.5);
+    // Exactly the benchmark's size. Carlito is metric-compatible with the
+    // Calibri it is set in, so at the same nominal size the two documents are
+    // directly comparable. 12pt would be larger than the benchmark, not
+    // "professional standard".
+    expect(t.pt).toBe(11);
     expect(t.leading).toBe(1.4);
     expect(t.measureMm, '210mm less 25mm margins').toBe(160);
     // Measured: justifying in a browser gives 2.44x word-space stretch against
     // the benchmark's 1.19x, because browsers break lines greedily.
     expect(t.align, 'body copy stays ragged right').not.toBe('justify');
+  });
+
+  test('the cover carries the logo artwork and the standard title', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+
+    const cover = await page.evaluate(() => {
+      const c = document.querySelector('#rpt .rpt-cover');
+      const logo = c.querySelector('img.logo');
+      const proj = [...c.querySelectorAll('.projblock p')];
+      return {
+        logoSrc: logo && logo.getAttribute('src'),
+        logoAlt: logo && logo.getAttribute('alt'),
+        title: c.querySelector('h1').textContent.trim(),
+        // Project's label runs inline with its value on one line; the address
+        // and lot follow on their own lines.
+        projLabelInline: proj[0].querySelector('b').textContent.trim() === 'Project:'
+                         && proj[0].childNodes.length > 1,
+        projLineCount: proj.length,
+        metaLines: [...c.querySelectorAll('.cmeta')].map(m => m.textContent.trim().split('\n')[0])
+      };
+    });
+    expect(cover.logoSrc).toBe('assets/abbot-logo.svg');
+    expect(cover.logoAlt, 'the firm name is artwork, so it needs a text alternative')
+      .toBeTruthy();
+    // A fixed title, not the report type: the type still appears in the
+    // Overview sentence, which is where it reads naturally.
+    expect(cover.title).toBe('Geotechnical Assessment');
+    expect(cover.projLabelInline,
+      'Project: runs inline with its value, it is not a heading on its own line').toBe(true);
+    expect(cover.projLineCount, 'description, address, lot').toBe(3);
+    expect(cover.metaLines.length, 'Prepared for, Job No, and revision/date').toBe(3);
+    expect(cover.metaLines[0]).toMatch(/^Prepared for:/);
+    expect(cover.metaLines[1]).toMatch(/^Job No:/);
+  });
+
+  test('every cover line is centred, and a long project wraps under 75% of the page',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await gotoTab(page, 'Client & site ID');
+      await page.fill('#f_client', 'ABC Corp');
+      await page.fill('#f_street', '123 ABC Street');
+      await page.fill('#f_suburb', 'Newcastle');
+      await page.fill('#f_postcode', '2300');
+      await page.fill('#f_lotDp', 'Lot 12 DP 12345');
+      // deliberately long: this is the only free text on the cover
+      await page.fill('#f_projectDesc', 'New two storey dwelling with basement garage, '
+        + 'swimming pool, retaining walls and associated landscaping works');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+
+      const g = await page.evaluate(() => {
+        const mm = px => +(px / (96 / 25.4)).toFixed(1);
+        const pg = document.querySelector('.rptpage');
+        const cov = pg.querySelector('.rpt-cover');
+        const r = e => e.getBoundingClientRect();
+        const centre = (r(pg).left + r(pg).right) / 2;
+        const box = el => { const q = document.createRange(); q.selectNodeContents(el);
+                            return q.getBoundingClientRect(); };
+        const first = cov.querySelector('.projblock p');
+        const b = box(first);
+        return {
+          pageWidth: mm(r(pg).width),
+          projWidth: mm(b.width),
+          projLines: Math.round(first.getBoundingClientRect().height
+                     / parseFloat(getComputedStyle(first).lineHeight)),
+          // an empty element measures at the origin, which is not a centring
+          // failure, so only lines that actually render are compared
+          offsets: [...cov.querySelectorAll('.projblock p, .cmeta')]
+            .filter(el => el.textContent.trim())
+            .map(el => { const q = box(el); return mm((q.left + q.right) / 2 - centre); })
+        };
+      });
+      expect(g.projLines, 'a long description wraps rather than running the measure')
+        .toBeGreaterThan(1);
+      expect(g.projWidth / g.pageWidth,
+        'and stays inside 75% of the page width').toBeLessThanOrEqual(0.75);
+      for (const off of g.offsets) {
+        expect(Math.abs(off), 'every cover line is centred on the page').toBeLessThan(1.5);
+      }
+    });
+
+  test('the cover text clears the photo band', async ({ page }) => {
+    // The band's arc is deepest at the centre of the page, which is where the
+    // detail block sits, so that is the edge the text has to clear.
+    //
+    // Fill the cover first: on a blank report the labels have no values, the
+    // block is shorter, and the test passes while a real cover overlaps.
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Setup');
+    await page.fill('#f_jobNo', 'AD-2026-014');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_client', 'ABC Corp');
+    await page.fill('#f_projectDesc', 'New single storey dwelling and detached garage');
+    await page.fill('#f_street', '123 ABC Street');
+    await page.fill('#f_suburb', 'Newcastle');
+    await page.fill('#f_postcode', '2300');
+    await page.fill('#f_lotDp', 'Lot 12 DP 12345');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    await page.evaluate(() => document.fonts.ready);
+
+    const g = await page.evaluate(() => {
+      const mm = px => +(px / (96 / 25.4)).toFixed(1);
+      const pg = document.querySelector('.rptpage');
+      const r = e => e.getBoundingClientRect();
+      const ph = pg.querySelector('.rpt-cover .coverphoto');
+      // the lowest text on the cover, whichever block it belongs to
+      const lowest = [...pg.querySelectorAll('.rpt-cover .titleblock, .rpt-cover .cmeta')]
+        .reduce((m, e) => Math.max(m, r(e).bottom), 0);
+      const SAG = 17.2;                       // measured from the reference artwork
+      return { textBottom: mm(lowest - r(pg).top),
+               bandTopAtCentre: mm(r(ph).top - r(pg).top) + SAG };
+    });
+    expect(g.textBottom, 'the job block must not sit over the photo')
+      .toBeLessThan(g.bandTopAtCentre);
+  });
+
+  test('the cover rules run to the paper edge',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+
+      const geom = await page.evaluate(() => {
+        const pg = document.querySelector('.rptpage');
+        const cov = pg.querySelector('.rpt-cover');
+        const r = e => e.getBoundingClientRect();
+        return {
+          bleedLeft: +(r(cov).left - r(pg).left).toFixed(1),
+          bleedRight: +(r(pg).right - r(cov).right).toFixed(1),
+          // the firm's contact details are on the running footer, not repeated
+          // in a block of their own on the cover
+          noContactStrip: !cov.querySelector('.contactstrip')
+        };
+      });
+      // A clip on .rptpagebody used to cut the bleed back to the text measure.
+      expect(Math.abs(geom.bleedLeft), 'the rules must reach the paper edge').toBeLessThan(1.5);
+      expect(Math.abs(geom.bleedRight)).toBeLessThan(1.5);
+      expect(geom.noContactStrip).toBe(true);
+    });
+
+  test('the cover photo band bleeds and stops above the sky rule', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+
+    const g = await page.evaluate(() => {
+      const mm = px => +(px / (96 / 25.4)).toFixed(1);
+      const pg = document.querySelector('.rptpage');
+      const ph = pg.querySelector('.rpt-cover .coverphoto');
+      const ft = pg.querySelector('.rptfoot');
+      const r = e => e.getBoundingClientRect();
+      return {
+        bleedL: mm(r(ph).left - r(pg).left),
+        bleedR: mm(r(pg).right - r(ph).right),
+        gapToRule: mm(r(ft).top - r(ph).bottom),
+        hasCurve: !!ph.querySelector('.curve'),
+        decorative: ph.getAttribute('aria-hidden'),
+        pageIsFixedHeight: !pg.classList.contains('grow')
+      };
+    });
+    expect(Math.abs(g.bleedL), 'the band runs to the paper edge').toBeLessThan(1.5);
+    expect(Math.abs(g.bleedR)).toBeLessThan(1.5);
+    // It tucks a hair behind the rule rather than leaving a white sliver, so a
+    // small negative gap is intended; a large one would mean it overshot.
+    expect(g.gapToRule, 'no white is wasted between photo and rule').toBeGreaterThan(-3);
+    expect(g.gapToRule, 'and it does not run past the rule').toBeLessThan(2);
+    expect(g.hasCurve, 'the curved top edge is drawn in CSS, not baked into the file').toBe(true);
+    expect(g.decorative, 'it carries no information, so screen readers skip it').toBe('true');
+    expect(g.pageIsFixedHeight,
+      'the band overflows the body deliberately; the sheet must stay A4').toBe(true);
+  });
+
+  test('the head and foot rules are the same distance from the page edges',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+
+      const g = await page.evaluate(() => {
+        const mm = px => +(px / (96 / 25.4)).toFixed(1);
+        const pg = document.querySelector('.rptpage');
+        const cov = pg.querySelector('.rpt-cover');
+        const ft = pg.querySelector('.rptfoot');
+        const r = e => e.getBoundingClientRect();
+        return {
+          navyFromTop: mm(r(cov).top - r(pg).top),
+          skyFromBottom: mm(r(pg).bottom - r(ft).top),
+          skyIsFooterRule: getComputedStyle(ft).borderTopWidth,
+          footerBleedL: mm(r(ft).left - r(pg).left),
+          footerBleedR: mm(r(pg).right - r(ft).right)
+        };
+      });
+      expect(Math.abs(g.navyFromTop - g.skyFromBottom),
+        'the sky rule sits as far from the foot as the navy rule is from the head')
+        .toBeLessThan(0.5);
+      expect(g.skyIsFooterRule).toBe('6px');
+      expect(Math.abs(g.footerBleedL), 'the footer rule bleeds too').toBeLessThan(1.5);
+      expect(Math.abs(g.footerBleedR)).toBeLessThan(1.5);
+    });
+
+  test('body copy, lists and the contents are all set at the same size', async ({ page }) => {
+    // Bullet lists had no rule and inherited 1rem, so the References list and
+    // the hold points set 12pt against 11pt prose.
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.evaluate(() => document.fonts.ready);
+
+    const pt = await page.evaluate(() => {
+      const size = el => el ? +(parseFloat(getComputedStyle(el).fontSize) * 0.75).toFixed(2) : null;
+      const notCover = s => [...document.querySelectorAll(s)].filter(e => !e.closest('.rpt-cover'))[0];
+      return {
+        para: size(notCover('#rpt > p')),
+        li: size([...document.querySelectorAll('#rpt li')].filter(e => !e.closest('.toc'))[0]),
+        toc: size(document.querySelector('#rpt .toc li')),
+        kv: size(document.querySelector('#rpt .kv > div'))
+      };
+    });
+    expect(pt.li, 'lists must not out-set the prose around them').toBe(pt.para);
+    expect(pt.toc).toBe(pt.para);
+    expect(pt.kv).toBe(pt.para);
   });
 
   test('section headings are plain bold with a hanging number', async ({ page }) => {

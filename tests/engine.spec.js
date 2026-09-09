@@ -208,7 +208,7 @@ test.describe('Backward compatibility', () => {
         },
         boreholes: [{ method: 'Hand auger', depth: '1.2', water: 'E = encountered',
           layers: [{ from: '0', to: '1.2', uscs: 'CL', desc: 'CLAY, brown' }] }], // no waterDepth key
-        dcps: [], samples: [], photos: [], plans: [], attachments: [], siteFigure: null, siteFigureCap: '',
+        dcps: [], samples: [], photos: [], plans: [], attachments: [],
         source: null,
       };
     });

@@ -10,6 +10,23 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+/* Carlito, metric-compatible with Calibri, SIL OFL. See vendor/fonts/README.md.
+   The report is set in it so an issued PDF is the same document whoever issued
+   it: system-ui resolves to SF Pro on iOS, Segoe UI on Windows and Roboto on
+   Android, which changed line breaks and page count per device.
+
+   font-display:block rather than swap. A flash of fallback text is harmless on
+   screen but would be baked into a PDF saved during the swap window, which is
+   exactly the non-determinism this is here to remove. The files are same-origin
+   and in the service worker shell, so the block period is not perceptible. */
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-regular.woff2) format("woff2");
+  font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-bold.woff2) format("woff2");
+  font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-italic.woff2) format("woff2");
+  font-weight:400;font-style:italic;font-display:block}
+@font-face{font-family:Carlito;src:url(vendor/fonts/carlito-bolditalic.woff2) format("woff2");
+  font-weight:700;font-style:italic;font-display:block}
 /* ============================================================
    Design tokens — Abbot Design brand palette.
    Navy and sky blue from the logo, limestone paper.
@@ -40,6 +57,8 @@
   --focus:#0f62fe;
   --radius:10px;
   --font:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
+  /* The interface keeps the platform font; the printed document must not. */
+  --report:Carlito,Calibri,system-ui,-apple-system,sans-serif;
   --display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Roboto,Arial,sans-serif;
   --tap:44px; /* WCAG 2.2 target size with headroom */
 }
@@ -258,15 +277,66 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 #preview{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:0}
 /* 1.5 is a screen value. Print body copy sits at 1.3-1.4; the benchmark
    measures 1.36. Scoped to the report so the interface keeps its own. */
-.rpt{font-family:var(--font);color:#111;line-height:1.4;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--display)}
-.rpt-cover{text-align:center;padding:2.4rem 1rem 2rem;border-top:10px solid var(--navy);border-bottom:6px solid var(--sky)}
-.rpt-cover .firm{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:.14em}
-.rpt-cover .firm span{color:var(--flag)}
-.rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
-.rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 .4rem}
-.rpt-cover .proj{font-size:1.05rem;margin:.15rem 0}
-.rpt-cover .meta{margin-top:1.6rem;font-size:.95rem;color:#333}
+.rpt{font-family:var(--report);color:#111;line-height:1.4;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--report)}
+/* The rules run to the paper edge rather than stopping at the text measure,
+   where they read as a cropped page. --bleed is the side margin of whichever
+   context the report is being rendered in. */
+.rpt{--bleed:2.4rem}
+.rptpage .rptpagebody{--bleed:25mm}
+/* The sky rule is no longer the cover's own bottom border: it has become the
+   division line above the running footer, set the same distance from the foot
+   of the page as the navy rule is from the head. */
+.rpt-cover{position:relative;min-height:254mm;text-align:center;
+  padding:2.4rem calc(1rem + var(--bleed)) 2rem;
+  margin-left:calc(-1 * var(--bleed));margin-right:calc(-1 * var(--bleed));
+  border-top:10px solid var(--navy)}
+/* The wordmark is the logo itself, so the cover carries the artwork rather
+   than setting the firm name as type. SVG so it stays crisp at any size and
+   costs 14 KB rather than a bitmap. */
+/* A photographic band across the foot of the cover, bleeding to the paper
+   edges and stopping above the sky rule. The fade and the curved top edge are
+   applied here rather than baked into the file, so both can be tuned and the
+   curve stays sharp at any size.
+
+   The arc is a white cap whose bottom corners are fully rounded: at the left
+   and right edges its depth is zero, in the middle it is the element's full
+   height, which is exactly the shape wanted. */
+/* Geometry measured from the reference cover artwork: the band starts 168.3mm
+   down the page, the arc is the bottom of a 658mm circle sagging 17.2mm at the
+   centre, and the photo is carried at 27% opacity.
+
+   bottom:-7mm takes the band past the cover box to meet the sky rule, so no
+   white is wasted between the photo and the footer. It depends on the cover's
+   254mm min-height, which is set just under the 255mm page body: the body
+   cannot grow without breaking pagination. */
+.rpt-cover .coverphoto{position:absolute;left:0;right:0;bottom:-7mm;height:110.7mm;
+  overflow:hidden;z-index:0}
+.rpt-cover .coverphoto::before{content:"";position:absolute;inset:0;
+  /* Framed on the deck: it sits in the left third with every post inside the
+     left half, and the image is lifted so the bottom rock is cropped away and
+     the good content is not lost under the white cap. Percentages rather than
+     millimetres so the framing holds at any band width. */
+  background:url(assets/cover-photo.jpg) 84% 19%/124% auto no-repeat;opacity:.27}
+/* A true circle, not an ellipse stretched to the page width: a border-radius
+   arc across the band is far pointier at the ends than the reference curve. */
+.rpt-cover .coverphoto .curve{position:absolute;left:50%;margin-left:-329mm;
+  top:calc(17.2mm - 658mm);width:658mm;height:658mm;border-radius:50%;background:#fff}
+/* Everything else on the cover sits above the band. */
+.rpt-cover > *:not(.coverphoto){position:relative;z-index:1}
+.rpt-cover .logo{display:block;width:100%;max-width:70mm;height:auto;margin:0 auto .9rem}
+/* Everything on the cover is centred. The project description is the only
+   free text here, so it is capped at 75% of the page width and wraps rather
+   than running the full measure. */
+.rpt-cover .projblock{max-width:157.5mm;margin-left:auto;margin-right:auto}
+.rpt-cover .projblock p{margin:.15rem 0;font-size:1.05rem}
+/* Prepared for, Job No, and the revision and date, each centred on the page. */
+.rpt-cover .cmeta{margin:1.4em 0 0;font-size:.95rem;color:#333}
+.rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
+/* The specific report type reads as a subtitle under the standing title, so it
+   is centred with it rather than left aligned with the detail block. One blank
+   line above it, two below, in its own line-heights. */
+.rpt-cover .rtype{font-size:1.05rem;margin:1.4em 0 1.4em}
 .rpt table{width:100%;border-collapse:collapse;font-size:.86rem;margin:.6rem 0 1rem}
 /* Hairline rules and a muted header band. A solid navy header row is heavier
    than the content it introduces and fights the body copy for attention. */
@@ -279,7 +349,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   padding:0;margin:1.5rem 0 .45rem;background:none;border:0}
 .rpt h2.numbered,.rpt h3.numbered{display:flex;gap:0;align-items:baseline}
 .rpt h2 .secno,.rpt h3 .secno{flex:0 0 2.8rem}
-.rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.93rem;columns:1}
+.rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.9167rem;columns:1}
 .rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0;border-bottom:1px dotted #c9c9c9}
 .rpt .toc li b{min-width:2.2rem;color:var(--navy)}
 .rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333;border-bottom-color:#e2e2e2}
@@ -289,27 +359,28 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .sig img.sigimg{display:block;height:56px;margin-bottom:.2rem;border-bottom:1.5px solid #333;padding-bottom:.2rem}
 .sigpad{border:1.5px dashed var(--line-strong);border-radius:8px;background:#fff;width:100%;max-width:430px;height:130px;touch-action:none;display:block}
 .rpt .sig p{margin:.1rem 0;font-size:.88rem}
-.rpt .coverfig{margin:1.8rem auto 0;max-width:520px;border:1px solid #c9c9c9;padding:.3rem;background:#fff}
-.rpt .coverfig img{width:100%;display:block}
-.rpt .coverfig figcaption{font-size:.78rem;color:#555;padding-top:.25rem}
-.rpt .contactstrip{margin-top:1.6rem;font-size:.82rem;color:#333;letter-spacing:.02em}
 .rpt h3{font-size:1rem;font-weight:700;margin:.9rem 0 .25rem}
 .rpt h4{font-size:.92rem;margin:.5rem 0 .2rem}
 .rpt .tblsig{height:38px;display:block;margin:0 auto .2rem}
-.rpt p{margin:.4rem 0;font-size:.93rem}
-.rpt .kv{display:grid;grid-template-columns:200px 1fr;font-size:.92rem;border:1px solid #b9b9b9}
+.rpt p{margin:.4rem 0;font-size:.9167rem}
+/* List items had no rule and inherited 1rem, so bullet lists set 12pt against
+   11pt prose: the References list and the hold points ran visibly larger than
+   the paragraphs around them. */
+.rpt li{font-size:.9167rem}
+.rpt .toc li{font-size:inherit}
+.rpt .kv{display:grid;grid-template-columns:200px 1fr;font-size:.9167rem;border:1px solid #b9b9b9}
 .rpt .kv>div{padding:.35rem .55rem;border-bottom:1px solid #d5d5d5}
 .rpt .kv>div:nth-child(odd){background:#e7edf1;font-weight:600;border-right:1px solid #c9d2d8;color:var(--navy-deep)}
 .rpt .kv>div:nth-last-child(-n+2){border-bottom:0}
 .rpt .classbox{border:2px solid var(--navy);padding:.8rem 1rem;margin:.8rem 0;display:flex;gap:1.4rem;flex-wrap:wrap}
-.rpt .classbox b{font-size:1.5rem;font-family:var(--display)}
+.rpt .classbox b{font-size:1.5rem;font-family:var(--report)}
 .rpt .photos{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 .rpt .photos figure{margin:0;border:1px solid #bbb;padding:.3rem}
 .rpt .photos img{width:100%;display:block}
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
-/* Sized so the contact line and the job line sit on one row at a 160mm
-   measure, with headroom for a long job number. */
-.rpt footer{margin-top:2rem;border-top:1px solid #999;padding-top:.5rem;font-size:.65rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
+/* 8pt, matching the benchmark, with the contact line and the job line on one
+   row at a 160mm measure and headroom for a long job number. */
+.rpt footer{margin-top:2rem;border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
   font-size:5rem;color:rgba(198,40,40,.14);border:6px solid rgba(198,40,40,.14);padding:.4rem 2rem;white-space:nowrap}
@@ -319,15 +390,25 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 #rptpages{display:none}
 .pageview #rpt{display:none}
 .pageview #rptpages{display:block;background:var(--paper);padding:1.4rem 1rem 2.4rem;overflow-x:auto}
+/* The running footer and the draft stamp are appended to the page, not to the
+   body, so they sit outside .rpt and would otherwise inherit the interface
+   font while the print path used the report font. Set it on the page so every
+   clone matches what prints. */
 .rptpage{position:relative;width:210mm;min-height:297mm;padding:18mm 25mm 24mm;margin:0 auto 2.4rem;
-  background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.18)}
+  background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.18);font-family:var(--report)}
 /* 297mm less the 18mm top and 24mm bottom page margins. Must stay in step with
    @page, or the preview paginates against the wrong page height. */
 .rptpage .rptpagebody{height:255mm;overflow:hidden;padding:0}
+/* The cover bleeds its rules past the text measure with negative margins, which
+   the body's clip would cut back to the margin. The cover is shorter than the
+   page, so letting that one page overflow is safe. Print has no clipping
+   container at all. */
+.rptpage.coverpage .rptpagebody{overflow:visible}
 /* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
-.rptpage .rptfoot{position:absolute;left:16mm;right:16mm;bottom:10mm;margin:0;
+.rptpage .rptfoot{position:absolute;left:0;right:0;bottom:10mm;margin:0;
+  padding-left:25mm;padding-right:25mm;
   display:flex;justify-content:space-between;gap:.6rem;
-  border-top:1px solid #999;padding-top:.5rem;font-size:.65rem;color:#444}
+  border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444}
 /* A single block taller than a page (an oversized table row) grows its page
    rather than being clipped: losing content silently would be worse than an
    honest long page. */
@@ -357,6 +438,8 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
      engineer happened to be looking at. */
   #rptpages{display:none !important}
   .pageview #rpt{display:block !important}
+  /* In print the side margin comes from @page, not from .rpt padding. */
+  .rpt{--bleed:25mm}
   /* A running footer on every page. Browsers do not implement the CSS Paged
      Media @bottom-center box, so the only mechanism available is a fixed
      element, which the print engine repeats per page. It is drawn inside the
@@ -366,7 +449,8 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
      Chrome, Edge and Firefox repeat fixed elements reliably; Safari, and iOS
      Safari in particular, are less consistent. A footer guaranteed on every
      page is what the Phase 3 server-side render is for. */
-  .rpt .rptfoot{position:fixed;left:-9mm;right:-9mm;bottom:-14mm;margin:0;background:#fff}
+  .rpt .rptfoot{position:fixed;left:-25mm;right:-25mm;bottom:-14mm;margin:0;background:#fff;
+    padding-left:25mm;padding-right:25mm}
   /* 25mm sides give a 160mm measure, the same as the reports this is
      benchmarked against. At 16mm the text ran close enough to the paper edge
      to read as a printed web page rather than a report. */
@@ -681,7 +765,7 @@ function blank(type){
       incLegend:true, incClassDefs:true, incGeneral:true, appGeneral:GENERAL_NOTES_DEFAULT,
       infoDocs:{},   /* id -> true/false, only where the engineer overrode the default */
       distribution:"", dist:[], recRows:[], awaitingResults:false },
-    boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [], siteFigure:null, siteFigureCap:"",
+    boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [],
     source: null   // reserved: quote-system prefill (phase 2)
   };
 }
@@ -1009,8 +1093,7 @@ function sectionTouched(r, secId){
      count towards that section, not Site description. */
   if(secId==="client") return (r.plans||[]).length>0 ||
                               (SECFIELDS.client).some(k=>String(r.d[k]||"").trim()!=="");
-  if(secId==="site")   return !!r.siteFigure ||
-                              (SECFIELDS.site).some(k=>String(r.d[k]||"").trim()!=="");
+  if(secId==="site")   return (SECFIELDS.site).some(k=>String(r.d[k]||"").trim()!=="");
   if(secId==="recs")   return r.d.footings.length>0 || (r.d.recRows||[]).length>0 ||
                               (SECFIELDS.recs).some(k=>String(r.d[k]||"").trim()!=="");
   if(secId==="slope")  return (r.d.slopeHazards||[]).length>0 || (r.d.riskLifeRows||[]).length>0 ||
@@ -1313,14 +1396,7 @@ site(r){ return `
   ${F("history","Site history & fill risk",{type:"textarea",wide:1,ph:"Previous use, filling, dams, demolition"})}
  </div>
 </fieldset>
-<fieldset><legend>Site location image</legend>
- <div class="inline">
-  <button type="button" id="sitefigbtn">🗺 Add locality / aerial image</button>
-  <input type="file" id="sitefigfile" accept="image/*" hidden aria-hidden="true">
- </div>
- <p class="hint">Appears on the cover and in section 2.</p>
- <div id="sitefigwrap" style="margin-top:.7rem"></div>
-</fieldset>`; },
+`; },
 
 field(r){ return `
 <fieldset><legend>Fieldwork visit</legend>
@@ -1718,7 +1794,7 @@ function renderEditor(opts){
   const sec = visibleSections()[sectionIdx];
   $("form").innerHTML = TPL[sec.id](report());
   renderBoreholes(); renderDcps(); renderSamples(); renderPhotos(); renderPlans(); renderDist(); renderRecRows();
-  renderSlopeHazards(); renderRiskLife(); renderSiteFig(); renderAttachments(); initSigPads(); renderReviewGaps();
+  renderSlopeHazards(); renderRiskLife(); renderAttachments(); initSigPads(); renderReviewGaps();
   const first = $("form").querySelector("input,select,textarea,button");
   if(isNav) window.scrollTo({top:0, left:0, behavior:"auto"});
   if(focusFirst && first && matchMedia("(min-width:700px)").matches) first.focus({preventScroll:true});
@@ -1770,9 +1846,6 @@ function buildReport(){
       <div>Surface drainage</div><div>${esc(d.drainage)||"Not recorded"}</div>
       <div>Neighbouring environment</div><div>${esc(d.neighbours)||"Not recorded"}</div>
     </div>
-    ${r.siteFigure?`<figure style="margin:.8rem 0;border:1px solid #bbb;padding:.3rem;max-width:560px">
-      <img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location image")}" style="width:100%;display:block">
-      <figcaption style="font-size:.8rem;padding-top:.25rem"><b>Figure 1:</b> ${esc(r.siteFigureCap||"Site location")}</figcaption></figure>`:""}
     ${sub("Geology")}
     <p>${esc(d.geologyUnit)||"Not recorded"}${d.geologyMap?` (${esc(d.geologyMap)})`:""}</p>
     ${sub("Site history & fill risk")}
@@ -2029,18 +2102,18 @@ function buildReport(){
   $("rpt").innerHTML = `
   ${issuedState}
   <div class="rpt-cover">
-    <div class="firm">${esc(FIRM.name)}</div>
-    <div class="tag">${esc(FIRM.tagline)}</div>
-    <h1>${esc(TYPES[r.type].label)}</h1>
-    <p class="proj"><b>${esc(d.projectDesc||"Proposed development")}</b></p>
-    <p class="proj">${esc(addr)}</p>
-    <p class="proj">${esc(d.lotDp)}</p>
-    <div class="meta">Prepared for: <b>${esc(d.client)}</b>${d.careOf?` c/- ${esc(d.careOf)}`:""}<br>
-      Job No: ${esc(d.jobNo)} · Revision ${esc(d.revision)} · ${dt(d.dateIssued)}</div>
-    ${r.siteFigure?`<figure class="coverfig"><img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location")}">
-      <figcaption>${esc(r.siteFigureCap||"Site location")}</figcaption></figure>`:""}
-    <div class="contactstrip">${esc(FIRM.address)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.web)}<br>
-      ${esc(FIRM.entity)} · ${esc(FIRM.abn)}</div>
+    <div class="coverphoto" aria-hidden="true"><span class="curve"></span></div>
+    <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
+    <h1>Geotechnical Assessment</h1>
+    <p class="rtype">${esc(TYPES[r.type].label)}</p>
+    <div class="projblock">
+      <p><b>Project:</b> ${esc(d.projectDesc||"Proposed development")}</p>
+      <p>${esc(addr)}</p>
+      <p>${esc(d.lotDp)}</p>
+    </div>
+    <p class="cmeta"><b>Prepared for:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
+    <p class="cmeta"><b>Job No:</b> ${esc(d.jobNo)}</p>
+    <p class="cmeta">Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
   </div>
 
   <h2>Contents</h2>
@@ -2182,7 +2255,11 @@ function renderPages(){
 
     const node = el.cloneNode(true);
     body.append(node);
-    if(over()){
+    /* The cover is a full-page element by construction, and its photo band is
+       deliberately positioned past the body's box to meet the sky rule. That
+       counts as overflow, which would otherwise mark the page "grow" and stop
+       it being a fixed A4 sheet. */
+    if(!el.classList.contains("rpt-cover") && over()){
       /* Doesn't fit here: try it alone on a fresh page before splitting it. */
       if(body.children.length > 1){ node.remove(); newPage(); body.append(node); }
       if(over()){
@@ -2191,6 +2268,7 @@ function renderPages(){
         else { body.append(el.cloneNode(true)); page.classList.add("grow"); }
       }
     }
+    if(el.classList.contains("rpt-cover")) page.classList.add("coverpage");
     if(el.classList.contains("rpt-cover") || el.classList.contains("breakafter")
        || el.style.breakAfter === "page") newPage();   /* break-after:page */
   }
@@ -2321,18 +2399,6 @@ function initSigPads(){
     cv.addEventListener("pointerup",done); cv.addEventListener("pointercancel",done);
   });
 }
-function renderSiteFig(){
-  const el=document.getElementById("sitefigwrap"); if(!el) return;
-  const r=report();
-  el.innerHTML = r.siteFigure ? `<figure style="margin:0;max-width:420px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff">
-    <img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location image")}" style="width:100%;display:block">
-    <figcaption style="padding:.5rem">
-      <label for="sitefigcap">Image caption</label>
-      <input id="sitefigcap" value="${esc(r.siteFigureCap)}" placeholder="e.g. Site location, source: SIX Maps NSW">
-      <button type="button" id="delsitefig" class="danger" style="margin-top:.4rem;width:100%">Remove image</button>
-    </figcaption></figure>` : "";
-}
-
 /* ============================================================
    Export / import
    ============================================================ */
@@ -2425,7 +2491,6 @@ document.addEventListener("click",e=>{
     saveDb(); renderRecRows(); renderTabs();
     noteUndo(`${gone && gone.area ? gone.area : "Recommendation"} removed.`, ()=>report().d.recRows.splice(i,0,gone)); }
   if(t.id==="ctx"){ show("home"); renderHome(); }
-  if(t.id==="sitefigbtn") $("sitefigfile").click();
   if(t.dataset.clearsig){ report().d[t.dataset.clearsig]=""; saveDb(); initSigPads(); }
   if(t.id==="submitreview"){
     const gaps=requirements(report());
@@ -2438,7 +2503,6 @@ document.addEventListener("click",e=>{
     ask("Return this report to the author as a draft?","Request changes").then(ok=>{
       if(ok){ report().status="draft"; saveDb(); renderEditor({focus:false}); note("Returned to draft."); }});
   }
-  if(t.id==="delsitefig"){ report().siteFigure=null; report().siteFigureCap=""; saveDb(); renderSiteFig(); }
   if(t.dataset.delphoto!==undefined){ const i=+t.dataset.delphoto, gone=report().photos.splice(i,1)[0];
     saveDb(); renderPhotos(); renderTabs();
     noteUndo(`Photo ${i+1} removed.`, ()=>report().photos.splice(i,0,gone)); }
@@ -2497,7 +2561,6 @@ function onFieldEdit(e){
       if(head) head.textContent = `Scenario ${i+1}${el.value?": "+el.value:""}`; } }
   if(el.id==="f_includeSlope"){ r.d.includeSlope=el.checked;
     sectionIdx=Math.min(sectionIdx, visibleSections().length-1); saveDb(); renderEditor({focus:false}); return; }
-  if(el.id==="sitefigcap"){ r.siteFigureCap=el.value; saveDb(); }
   refreshTabsSoon();
 }
 /* Bound to BOTH events on purpose: autofill, and <select>/<input type=date> on
@@ -2547,10 +2610,6 @@ document.addEventListener("change",e=>{
         (report().plans||(report().plans=[])).push({caption:"",dataUrl:d}); saveDb(); renderEditor({focus:false}); note("Site plan added.");
       }).catch(()=>imgError(f));
     }); e.target.value=""; }
-  if(e.target.id==="sitefigfile"){ const f=e.target.files[0];
-    if(f) compressImage(f).then(d=>{ report().siteFigure=d; saveDb(); renderEditor({focus:false}); note("Site image added."); })
-      .catch(()=>imgError(f));
-    e.target.value=""; }
   if(e.target.id==="importfile"){
     const f=e.target.files[0]; if(!f) return;
     f.text().then(txt=>{ try{ const r=JSON.parse(txt);
