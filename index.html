@@ -280,7 +280,11 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt{font-family:var(--report);color:#111;line-height:1.4;padding:2.2rem 2.4rem;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .rpt h1,.rpt h2,.rpt h3,.rpt .rh{font-family:var(--report)}
 .rpt-cover{text-align:center;padding:2.4rem 1rem 2rem;border-top:10px solid var(--navy);border-bottom:6px solid var(--sky)}
-.rpt-cover .firm{font-family:var(--report);font-size:2rem;font-weight:700;letter-spacing:.14em}
+/* The wordmark is the logo itself, so the cover carries the artwork rather
+   than setting the firm name as type. SVG so it stays crisp at any size and
+   costs 14 KB rather than a bitmap. */
+.rpt-cover .logo{display:block;width:100%;max-width:86mm;height:auto;margin:0 auto .9rem}
+.rpt-cover .jobline{margin-top:.9rem}
 .rpt-cover .firm span{color:var(--flag)}
 .rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 .4rem}
@@ -2057,14 +2061,14 @@ function buildReport(){
   $("rpt").innerHTML = `
   ${issuedState}
   <div class="rpt-cover">
-    <div class="firm">${esc(FIRM.name)}</div>
+    <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
     <div class="tag">${esc(FIRM.tagline)}</div>
-    <h1>${esc(TYPES[r.type].label)}</h1>
-    <p class="proj"><b>${esc(d.projectDesc||"Proposed development")}</b></p>
+    <h1>Geotechnical Assessment</h1>
+    <p class="proj"><b>Project:</b> ${esc(d.projectDesc||"Proposed development")}</p>
     <p class="proj">${esc(addr)}</p>
     <p class="proj">${esc(d.lotDp)}</p>
-    <div class="meta">Prepared for: <b>${esc(d.client)}</b>${d.careOf?` c/- ${esc(d.careOf)}`:""}<br>
-      Job No: ${esc(d.jobNo)} · Revision ${esc(d.revision)} · ${dt(d.dateIssued)}</div>
+    <div class="meta"><b>Prepared for:</b><br>${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</div>
+    <div class="meta jobline">Job No: ${esc(d.jobNo)} · Revision ${esc(d.revision)} · ${dt(d.dateIssued)}</div>
     ${r.siteFigure?`<figure class="coverfig"><img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location")}">
       <figcaption>${esc(r.siteFigureCap||"Site location")}</figcaption></figure>`:""}
     <div class="contactstrip">${esc(FIRM.address)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.web)}<br>

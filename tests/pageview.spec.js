@@ -120,7 +120,14 @@ test.describe('paginated preview', () => {
       }));
 
       // The cover owns page 1 and nothing else follows it onto that sheet.
-      expect(firstOf[0]).toContain('ABBOT DESIGN');
+      // Assert the cover element, not its wordmark: the firm name is artwork,
+      // so it is not in the text content.
+      const coverOnPageOne = await page.$$eval('.rptpage',
+        els => !!els[0].querySelector('.rpt-cover') &&
+               els.slice(1).every(p => !p.querySelector('.rpt-cover')));
+      expect(coverOnPageOne).toBe(true);
+      const coverTitle = await page.$eval('.rptpage .rpt-cover h1', el => el.textContent.trim());
+      expect(coverTitle).toBe('Geotechnical Assessment');
       // Contents starts page 2 and ends it.
       expect(firstOf[1]).toContain('Contents');
       expect(firstOf[2], 'Contents must not share its page').not.toContain('Contents');
@@ -224,6 +231,37 @@ test.describe('paginated preview', () => {
     // Measured: justifying in a browser gives 2.44x word-space stretch against
     // the benchmark's 1.19x, because browsers break lines greedily.
     expect(t.align, 'body copy stays ragged right').not.toBe('justify');
+  });
+
+  test('the cover carries the logo artwork and the standard title', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+
+    const cover = await page.evaluate(() => {
+      const c = document.querySelector('#rpt .rpt-cover');
+      const logo = c.querySelector('img.logo');
+      const proj = [...c.querySelectorAll('.proj')][0];
+      const meta = c.querySelector('.meta');
+      return {
+        logoSrc: logo && logo.getAttribute('src'),
+        logoAlt: logo && logo.getAttribute('alt'),
+        title: c.querySelector('h1').textContent.trim(),
+        projLabel: proj.querySelector('b') && proj.querySelector('b').textContent.trim(),
+        projBoldIsLabelOnly: proj.querySelector('b').textContent.trim() === 'Project:',
+        preparedLabel: meta.querySelector('b') && meta.querySelector('b').textContent.trim(),
+        preparedBreaks: !!meta.querySelector('br')
+      };
+    });
+    expect(cover.logoSrc).toBe('assets/abbot-logo.svg');
+    expect(cover.logoAlt, 'the firm name is artwork, so it needs a text alternative')
+      .toBeTruthy();
+    // A fixed title, not the report type: the type still appears in the
+    // Overview sentence, which is where it reads naturally.
+    expect(cover.title).toBe('Geotechnical Assessment');
+    expect(cover.projLabel).toBe('Project:');
+    expect(cover.projBoldIsLabelOnly, 'the label is bold, the value is not').toBe(true);
+    expect(cover.preparedLabel).toBe('Prepared for:');
+    expect(cover.preparedBreaks, 'the client sits on its own line under the label').toBe(true);
   });
 
   test('body copy, lists and the contents are all set at the same size', async ({ page }) => {

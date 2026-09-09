@@ -43,6 +43,17 @@ test.describe('embedded report font', () => {
     expect(licence.status(), 'the OFL text ships with the fonts').toBe(200);
   });
 
+  test('the cover logo resolves and is cached for offline use', async ({ request }) => {
+    const res = await request.get('/assets/abbot-logo.svg');
+    expect(res.status()).toBe(200);
+    expect((await res.text()).slice(0, 400)).toContain('viewBox');
+
+    const sw = await (await request.get('/sw.js')).text();
+    const shell = JSON.parse(sw.match(/const SHELL = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+    expect(shell, 'the cover would print without its wordmark on a site with no signal')
+      .toContain('./assets/abbot-logo.svg');
+  });
+
   test('the report actually renders in Carlito, not the platform font', async ({ page }) => {
     await newReport(page, 'classification');
     await openPreview(page);
