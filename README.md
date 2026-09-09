@@ -80,11 +80,11 @@ PDF rather than eyeballed:
 
 | | Benchmark | This engine |
 |---|---|---|
-| Body size | 11.0 pt | 11.16 pt |
+| Body size | 11.0 pt | 11.0 pt |
 | Leading | 1.36 | 1.40 |
 | Text measure | 160 mm | 160 mm (210 less 25 mm margins) |
 | Font | Calibri (embedded) | **Carlito (embedded)**, metric-compatible with Calibri |
-| Characters/line | ~100 | ~95 |
+| Characters/line | ~100 | ~96 |
 | Alignment | Justified | **Ragged right** |
 
 **Body copy is deliberately not justified.** Measured, browser justification gives 2.44× word-space

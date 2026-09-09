@@ -214,13 +214,38 @@ test.describe('paginated preview', () => {
         align: cs.textAlign
       };
     });
-    expect(t.pt, 'benchmark body size is 11pt').toBeGreaterThanOrEqual(10.5);
-    expect(t.pt, 'and 12pt would be larger than the benchmark').toBeLessThanOrEqual(11.5);
+    // Exactly the benchmark's size. Carlito is metric-compatible with the
+    // Calibri it is set in, so at the same nominal size the two documents are
+    // directly comparable. 12pt would be larger than the benchmark, not
+    // "professional standard".
+    expect(t.pt).toBe(11);
     expect(t.leading).toBe(1.4);
     expect(t.measureMm, '210mm less 25mm margins').toBe(160);
     // Measured: justifying in a browser gives 2.44x word-space stretch against
     // the benchmark's 1.19x, because browsers break lines greedily.
     expect(t.align, 'body copy stays ragged right').not.toBe('justify');
+  });
+
+  test('body copy, lists and the contents are all set at the same size', async ({ page }) => {
+    // Bullet lists had no rule and inherited 1rem, so the References list and
+    // the hold points set 12pt against 11pt prose.
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.evaluate(() => document.fonts.ready);
+
+    const pt = await page.evaluate(() => {
+      const size = el => el ? +(parseFloat(getComputedStyle(el).fontSize) * 0.75).toFixed(2) : null;
+      const notCover = s => [...document.querySelectorAll(s)].filter(e => !e.closest('.rpt-cover'))[0];
+      return {
+        para: size(notCover('#rpt > p')),
+        li: size([...document.querySelectorAll('#rpt li')].filter(e => !e.closest('.toc'))[0]),
+        toc: size(document.querySelector('#rpt .toc li')),
+        kv: size(document.querySelector('#rpt .kv > div'))
+      };
+    });
+    expect(pt.li, 'lists must not out-set the prose around them').toBe(pt.para);
+    expect(pt.toc).toBe(pt.para);
+    expect(pt.kv).toBe(pt.para);
   });
 
   test('section headings are plain bold with a hanging number', async ({ page }) => {

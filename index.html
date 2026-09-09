@@ -298,7 +298,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   padding:0;margin:1.5rem 0 .45rem;background:none;border:0}
 .rpt h2.numbered,.rpt h3.numbered{display:flex;gap:0;align-items:baseline}
 .rpt h2 .secno,.rpt h3 .secno{flex:0 0 2.8rem}
-.rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.93rem;columns:1}
+.rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.9167rem;columns:1}
 .rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0;border-bottom:1px dotted #c9c9c9}
 .rpt .toc li b{min-width:2.2rem;color:var(--navy)}
 .rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333;border-bottom-color:#e2e2e2}
@@ -315,8 +315,13 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt h3{font-size:1rem;font-weight:700;margin:.9rem 0 .25rem}
 .rpt h4{font-size:.92rem;margin:.5rem 0 .2rem}
 .rpt .tblsig{height:38px;display:block;margin:0 auto .2rem}
-.rpt p{margin:.4rem 0;font-size:.93rem}
-.rpt .kv{display:grid;grid-template-columns:200px 1fr;font-size:.92rem;border:1px solid #b9b9b9}
+.rpt p{margin:.4rem 0;font-size:.9167rem}
+/* List items had no rule and inherited 1rem, so bullet lists set 12pt against
+   11pt prose: the References list and the hold points ran visibly larger than
+   the paragraphs around them. */
+.rpt li{font-size:.9167rem}
+.rpt .toc li{font-size:inherit}
+.rpt .kv{display:grid;grid-template-columns:200px 1fr;font-size:.9167rem;border:1px solid #b9b9b9}
 .rpt .kv>div{padding:.35rem .55rem;border-bottom:1px solid #d5d5d5}
 .rpt .kv>div:nth-child(odd){background:#e7edf1;font-weight:600;border-right:1px solid #c9d2d8;color:var(--navy-deep)}
 .rpt .kv>div:nth-last-child(-n+2){border-bottom:0}
