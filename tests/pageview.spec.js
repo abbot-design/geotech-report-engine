@@ -242,22 +242,17 @@ test.describe('paginated preview', () => {
     const cover = await page.evaluate(() => {
       const c = document.querySelector('#rpt .rpt-cover');
       const logo = c.querySelector('img.logo');
-      const groups = [...c.querySelectorAll('.cgroup')];
+      const proj = [...c.querySelectorAll('.projblock p')];
       return {
         logoSrc: logo && logo.getAttribute('src'),
         logoAlt: logo && logo.getAttribute('alt'),
         title: c.querySelector('h1').textContent.trim(),
-        groupLabels: groups.map(g => g.querySelector('.chead').textContent.trim()),
-        // each label is centred on the page, its lines start at its own left edge
-        labelsCentred: groups.every(g => {
-          const pg = document.querySelector('.rptpage') || document.getElementById('rpt');
-          const h = g.querySelector('.chead').getBoundingClientRect();
-          const p = pg.getBoundingClientRect();
-          return Math.abs((h.left + h.right) / 2 - (p.left + p.right) / 2) < 2;
-        }),
-        valuesAlignToLabel: groups.every(g =>
-          Math.abs(g.querySelector('.cvals').getBoundingClientRect().left
-                 - g.querySelector('.chead').getBoundingClientRect().left) < 2)
+        // Project's label runs inline with its value on one line; the address
+        // and lot follow on their own lines.
+        projLabelInline: proj[0].querySelector('b').textContent.trim() === 'Project:'
+                         && proj[0].childNodes.length > 1,
+        projLineCount: proj.length,
+        metaLines: [...c.querySelectorAll('.cmeta')].map(m => m.textContent.trim().split('\n')[0])
       };
     });
     expect(cover.logoSrc).toBe('assets/abbot-logo.svg');
@@ -266,11 +261,61 @@ test.describe('paginated preview', () => {
     // A fixed title, not the report type: the type still appears in the
     // Overview sentence, which is where it reads naturally.
     expect(cover.title).toBe('Geotechnical Assessment');
-    expect(cover.groupLabels).toEqual(['Project:', 'Prepared for:', 'Job No:']);
-    expect(cover.labelsCentred, 'the labels are centred on the page').toBe(true);
-    expect(cover.valuesAlignToLabel,
-      'their lines are left aligned to their own label, not to the page').toBe(true);
+    expect(cover.projLabelInline,
+      'Project: runs inline with its value, it is not a heading on its own line').toBe(true);
+    expect(cover.projLineCount, 'description, address, lot').toBe(3);
+    expect(cover.metaLines.length, 'Prepared for, Job No, and revision/date').toBe(3);
+    expect(cover.metaLines[0]).toMatch(/^Prepared for:/);
+    expect(cover.metaLines[1]).toMatch(/^Job No:/);
   });
+
+  test('every cover line is centred, and a long project wraps under 75% of the page',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await gotoTab(page, 'Client & site ID');
+      await page.fill('#f_client', 'ABC Corp');
+      await page.fill('#f_street', '123 ABC Street');
+      await page.fill('#f_suburb', 'Newcastle');
+      await page.fill('#f_postcode', '2300');
+      await page.fill('#f_lotDp', 'Lot 12 DP 12345');
+      // deliberately long: this is the only free text on the cover
+      await page.fill('#f_projectDesc', 'New two storey dwelling with basement garage, '
+        + 'swimming pool, retaining walls and associated landscaping works');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+
+      const g = await page.evaluate(() => {
+        const mm = px => +(px / (96 / 25.4)).toFixed(1);
+        const pg = document.querySelector('.rptpage');
+        const cov = pg.querySelector('.rpt-cover');
+        const r = e => e.getBoundingClientRect();
+        const centre = (r(pg).left + r(pg).right) / 2;
+        const box = el => { const q = document.createRange(); q.selectNodeContents(el);
+                            return q.getBoundingClientRect(); };
+        const first = cov.querySelector('.projblock p');
+        const b = box(first);
+        return {
+          pageWidth: mm(r(pg).width),
+          projWidth: mm(b.width),
+          projLines: Math.round(first.getBoundingClientRect().height
+                     / parseFloat(getComputedStyle(first).lineHeight)),
+          // an empty element measures at the origin, which is not a centring
+          // failure, so only lines that actually render are compared
+          offsets: [...cov.querySelectorAll('.projblock p, .cmeta')]
+            .filter(el => el.textContent.trim())
+            .map(el => { const q = box(el); return mm((q.left + q.right) / 2 - centre); })
+        };
+      });
+      expect(g.projLines, 'a long description wraps rather than running the measure')
+        .toBeGreaterThan(1);
+      expect(g.projWidth / g.pageWidth,
+        'and stays inside 75% of the page width').toBeLessThanOrEqual(0.75);
+      for (const off of g.offsets) {
+        expect(Math.abs(off), 'every cover line is centred on the page').toBeLessThan(1.5);
+      }
+    });
 
   test('the cover text clears the photo band', async ({ page }) => {
     // The band's arc is deepest at the centre of the page, which is where the
@@ -299,7 +344,7 @@ test.describe('paginated preview', () => {
       const r = e => e.getBoundingClientRect();
       const ph = pg.querySelector('.rpt-cover .coverphoto');
       // the lowest text on the cover, whichever block it belongs to
-      const lowest = [...pg.querySelectorAll('.rpt-cover .cgroup')]
+      const lowest = [...pg.querySelectorAll('.rpt-cover .titleblock, .rpt-cover .cmeta')]
         .reduce((m, e) => Math.max(m, r(e).bottom), 0);
       const SAG = 17.2;                       // measured from the reference artwork
       return { textBottom: mm(lowest - r(pg).top),

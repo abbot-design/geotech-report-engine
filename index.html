@@ -325,18 +325,13 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 /* Everything else on the cover sits above the band. */
 .rpt-cover > *:not(.coverphoto){position:relative;z-index:1}
 .rpt-cover .logo{display:block;width:100%;max-width:70mm;height:auto;margin:0 auto .9rem}
-/* Each label is centred on the page; the lines beneath it start at that
-   label's own left edge.
-
-   The values are width:0 with nowrap so they cannot widen the group. The
-   group's width is therefore the label's width, which is what centres the
-   label on the page rather than centring the block as a whole; the values
-   overflow to the right from the label's left edge. Zero-width line boxes
-   still carry their own height, so the groups stack normally. */
-.rpt-cover .cgroup{width:fit-content;margin:1.3em auto 0;text-align:left;
-  font-size:.95rem;color:#333}
-.rpt-cover .chead{display:block}
-.rpt-cover .cvals{display:block;width:0;white-space:nowrap;font-weight:400}
+/* Everything on the cover is centred. The project description is the only
+   free text here, so it is capped at 75% of the page width and wraps rather
+   than running the full measure. */
+.rpt-cover .projblock{max-width:157.5mm;margin-left:auto;margin-right:auto}
+.rpt-cover .projblock p{margin:.15rem 0;font-size:1.05rem}
+/* Prepared for, Job No, and the revision and date, each centred on the page. */
+.rpt-cover .cmeta{margin:1.4em 0 0;font-size:.95rem;color:#333}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
 /* The specific report type reads as a subtitle under the standing title, so it
    is centred with it rather than left aligned with the detail block. One blank
@@ -2111,9 +2106,14 @@ function buildReport(){
     <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
     <h1>Geotechnical Assessment</h1>
     <p class="rtype">${esc(TYPES[r.type].label)}</p>
-    <div class="cgroup"><b class="chead">Project:</b><span class="cvals">${esc(d.projectDesc||"Proposed development")}<br>${esc(addr)}<br>${esc(d.lotDp)}</span></div>
-    <div class="cgroup"><b class="chead">Prepared for:</b><span class="cvals">${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</span></div>
-    <div class="cgroup"><b class="chead">Job No:</b><span class="cvals">${esc(d.jobNo)}<br>Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</span></div>
+    <div class="projblock">
+      <p><b>Project:</b> ${esc(d.projectDesc||"Proposed development")}</p>
+      <p>${esc(addr)}</p>
+      <p>${esc(d.lotDp)}</p>
+    </div>
+    <p class="cmeta"><b>Prepared for:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
+    <p class="cmeta"><b>Job No:</b> ${esc(d.jobNo)}</p>
+    <p class="cmeta">Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
   </div>
 
   <h2>Contents</h2>
