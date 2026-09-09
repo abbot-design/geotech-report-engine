@@ -264,6 +264,36 @@ test.describe('paginated preview', () => {
     expect(cover.preparedBreaks, 'the client sits on its own line under the label').toBe(true);
   });
 
+  test('the cover rules run to the paper edge and the detail block is left aligned',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+
+      const geom = await page.evaluate(() => {
+        const pg = document.querySelector('.rptpage');
+        const cov = pg.querySelector('.rpt-cover');
+        const h1 = cov.querySelector('h1');
+        const blk = cov.querySelector('.coverblock');
+        const rg = document.createRange(); rg.selectNodeContents(h1);
+        const r = e => e.getBoundingClientRect();
+        return {
+          bleedLeft: +(r(cov).left - r(pg).left).toFixed(1),
+          bleedRight: +(r(pg).right - r(cov).right).toFixed(1),
+          // the detail block starts where the centred title's text starts
+          offset: +(r(blk).left - rg.getBoundingClientRect().left).toFixed(1),
+          stripAtFoot: r(cov.querySelector('.contactstrip')).bottom > r(cov).top + r(cov).height * 0.75
+        };
+      });
+      // A clip on .rptpagebody used to cut the bleed back to the text measure.
+      expect(Math.abs(geom.bleedLeft), 'the rules must reach the paper edge').toBeLessThan(1.5);
+      expect(Math.abs(geom.bleedRight)).toBeLessThan(1.5);
+      expect(Math.abs(geom.offset), 'detail block aligns under the title').toBeLessThan(1.5);
+      expect(geom.stripAtFoot, 'the contact strip sits at the foot of the cover').toBe(true);
+    });
+
   test('body copy, lists and the contents are all set at the same size', async ({ page }) => {
     // Bullet lists had no rule and inherited 1rem, so the References list and
     // the hold points set 12pt against 11pt prose.
