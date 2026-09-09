@@ -325,7 +325,14 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 /* Everything else on the cover sits above the band. */
 .rpt-cover > *:not(.coverphoto){position:relative;z-index:1}
 .rpt-cover .logo{display:block;width:100%;max-width:70mm;height:auto;margin:0 auto .9rem}
-.rpt-cover .jobline{margin-top:.9rem}
+/* Each label is centred on the page and the lines under it start at the
+   label's own left edge. The values are width:0 so they cannot widen the
+   group: the group's width is the label's width, which is what centres the
+   label rather than the block as a whole. They overflow to the right, which
+   is exactly "left aligned to their own header". */
+.rpt-cover .cgroup{width:fit-content;margin:1.15em auto 0;text-align:left;font-size:.95rem;color:#333}
+.rpt-cover .chead{display:block}
+.rpt-cover .cvals{display:block;width:0;white-space:nowrap;font-weight:400}
 /* Everything under the title reads as a left-aligned block rather than a stack
    of centred lines. The block shrinks to its widest line and is centred as a
    whole, so its left edge sits under the start of the centred title. */
@@ -338,7 +345,6 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt-cover .rtype{font-size:1.05rem;margin:1.4em 0 1.4em}
 .rpt-cover .coverblock h1,.rpt-cover .coverblock .rtype{text-align:center}
 .rpt-cover .proj{font-size:1.05rem;margin:.15rem 0}
-.rpt-cover .meta{margin-top:1.6rem;font-size:.95rem;color:#333}
 .rpt table{width:100%;border-collapse:collapse;font-size:.86rem;margin:.6rem 0 1rem}
 /* Hairline rules and a muted header band. A solid navy header row is heavier
    than the content it introduces and fights the body copy for attention. */
@@ -2112,9 +2118,9 @@ function buildReport(){
       <p class="proj"><b>Project:</b> ${esc(d.projectDesc||"Proposed development")}</p>
       <p class="proj">${esc(addr)}</p>
       <p class="proj">${esc(d.lotDp)}</p>
-      <div class="meta"><b>Prepared for:</b><br>${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</div>
-      <div class="meta jobline"><b>Job No:</b> ${esc(d.jobNo)}<br>Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</div>
     </div>
+    <div class="cgroup"><b class="chead">Prepared for:</b><span class="cvals">${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</span></div>
+    <div class="cgroup"><b class="chead">Job No:</b><span class="cvals">${esc(d.jobNo)}<br>Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</span></div>
   </div>
 
   <h2>Contents</h2>

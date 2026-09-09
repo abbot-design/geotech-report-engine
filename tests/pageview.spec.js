@@ -243,15 +243,24 @@ test.describe('paginated preview', () => {
       const c = document.querySelector('#rpt .rpt-cover');
       const logo = c.querySelector('img.logo');
       const proj = [...c.querySelectorAll('.proj')][0];
-      const meta = c.querySelector('.meta');
+      const groups = [...c.querySelectorAll('.cgroup')];
       return {
         logoSrc: logo && logo.getAttribute('src'),
         logoAlt: logo && logo.getAttribute('alt'),
         title: c.querySelector('h1').textContent.trim(),
         projLabel: proj.querySelector('b') && proj.querySelector('b').textContent.trim(),
         projBoldIsLabelOnly: proj.querySelector('b').textContent.trim() === 'Project:',
-        preparedLabel: meta.querySelector('b') && meta.querySelector('b').textContent.trim(),
-        preparedBreaks: !!meta.querySelector('br')
+        groupLabels: groups.map(g => g.querySelector('.chead').textContent.trim()),
+        // each label is centred on the page, its lines start at its own left edge
+        labelsCentred: groups.every(g => {
+          const pg = document.querySelector('.rptpage') || document.getElementById('rpt');
+          const h = g.querySelector('.chead').getBoundingClientRect();
+          const p = pg.getBoundingClientRect();
+          return Math.abs((h.left + h.right) / 2 - (p.left + p.right) / 2) < 2;
+        }),
+        valuesAlignToLabel: groups.every(g =>
+          Math.abs(g.querySelector('.cvals').getBoundingClientRect().left
+                 - g.querySelector('.chead').getBoundingClientRect().left) < 2)
       };
     });
     expect(cover.logoSrc).toBe('assets/abbot-logo.svg');
@@ -262,14 +271,28 @@ test.describe('paginated preview', () => {
     expect(cover.title).toBe('Geotechnical Assessment');
     expect(cover.projLabel).toBe('Project:');
     expect(cover.projBoldIsLabelOnly, 'the label is bold, the value is not').toBe(true);
-    expect(cover.preparedLabel).toBe('Prepared for:');
-    expect(cover.preparedBreaks, 'the client sits on its own line under the label').toBe(true);
+    expect(cover.groupLabels).toEqual(['Prepared for:', 'Job No:']);
+    expect(cover.labelsCentred, 'the labels are centred on the page').toBe(true);
+    expect(cover.valuesAlignToLabel,
+      'their lines are left aligned to their own label, not to the page').toBe(true);
   });
 
   test('the cover text clears the photo band', async ({ page }) => {
     // The band's arc is deepest at the centre of the page, which is where the
     // detail block sits, so that is the edge the text has to clear.
+    //
+    // Fill the cover first: on a blank report the labels have no values, the
+    // block is shorter, and the test passes while a real cover overlaps.
     await newReport(page, 'classification');
+    await gotoTab(page, 'Setup');
+    await page.fill('#f_jobNo', 'AD-2026-014');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_client', 'ABC Corp');
+    await page.fill('#f_projectDesc', 'New single storey dwelling and detached garage');
+    await page.fill('#f_street', '123 ABC Street');
+    await page.fill('#f_suburb', 'Newcastle');
+    await page.fill('#f_postcode', '2300');
+    await page.fill('#f_lotDp', 'Lot 12 DP 12345');
     await openPreview(page);
     await page.click('#pageview');
     await page.waitForSelector('.rptpage');
@@ -279,10 +302,12 @@ test.describe('paginated preview', () => {
       const mm = px => +(px / (96 / 25.4)).toFixed(1);
       const pg = document.querySelector('.rptpage');
       const r = e => e.getBoundingClientRect();
-      const blk = pg.querySelector('.rpt-cover .coverblock');
       const ph = pg.querySelector('.rpt-cover .coverphoto');
+      // the lowest text on the cover, whichever block it belongs to
+      const lowest = [...pg.querySelectorAll('.rpt-cover .coverblock, .rpt-cover .cgroup')]
+        .reduce((m, e) => Math.max(m, r(e).bottom), 0);
       const SAG = 17.2;                       // measured from the reference artwork
-      return { textBottom: mm(r(blk).bottom - r(pg).top),
+      return { textBottom: mm(lowest - r(pg).top),
                bandTopAtCentre: mm(r(ph).top - r(pg).top) + SAG };
     });
     expect(g.textBottom, 'the job block must not sit over the photo')
