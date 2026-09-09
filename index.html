@@ -331,7 +331,6 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    whole, so its left edge sits under the start of the centred title. */
 .rpt-cover .coverblock{display:inline-block;text-align:left;max-width:100%}
 .rpt-cover .coverblock h1{text-align:center}
-.rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
 /* The specific report type reads as a subtitle under the standing title, so it
    is centred with it rather than left aligned with the detail block. One blank
@@ -2107,7 +2106,6 @@ function buildReport(){
   <div class="rpt-cover">
     <div class="coverphoto" aria-hidden="true"><span class="curve"></span></div>
     <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
-    <div class="tag">${esc(FIRM.tagline)}</div>
     <div class="coverblock">
       <h1>Geotechnical Assessment</h1>
       <p class="rtype">${esc(TYPES[r.type].label)}</p>
