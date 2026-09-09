@@ -109,7 +109,7 @@ test.describe('paginated preview', () => {
     expect(hidden, 'otherwise the PDF would contain both renderings').toBe(true);
   });
 
-  test('the title page, contents and references each get a page of their own',
+  test('the front matter pages and references each get a page of their own',
     async ({ page }) => {
       await newReport(page, 'classification');
       await openPreview(page);
@@ -130,9 +130,12 @@ test.describe('paginated preview', () => {
       expect(coverOnPageOne).toBe(true);
       const coverTitle = await page.$eval('.rptpage .rpt-cover h1', el => el.textContent.trim());
       expect(coverTitle).toBe('Geotechnical Assessment');
-      // Contents starts page 2 and ends it.
-      expect(firstOf[1]).toContain('Contents');
-      expect(firstOf[2], 'Contents must not share its page').not.toContain('Contents');
+      // Front matter order: what to do, then the assessment summary, then the
+      // contents, each starting its own page.
+      expect(firstOf[1]).toContain('What to do with this report');
+      expect(firstOf[2]).toContain('Geotechnical Assessment');
+      expect(firstOf[3]).toContain('Contents');
+      expect(firstOf[4], 'Contents must not share its page').not.toContain('Contents');
       // References starts a page of its own.
       const refPage = firstOf.findIndex(t => /References/.test(t));
       expect(refPage, 'References should begin a sheet, not run on').toBeGreaterThan(0);
@@ -485,6 +488,59 @@ test.describe('paginated preview', () => {
     expect(h.borderLeft, 'the coloured bar read as a web component').toBe(0);
     expect(h.background, 'as did the gradient wash').toBe('none');
   });
+
+  test('a running header sits on every page but the cover', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    await page.evaluate(() => document.fonts.ready);
+
+    const g = await page.evaluate(() => {
+      const mm = px => +(px / (96 / 25.4)).toFixed(1);
+      const ps = [...document.querySelectorAll('.rptpage')];
+      const h = ps[1].querySelector('.rpthead');
+      const r = e => e.getBoundingClientRect();
+      return {
+        onCover: !!ps[0].querySelector('.rpthead'),
+        onEveryOther: ps.slice(1).every(p => !!p.querySelector('.rpthead')),
+        logoHeight: mm(r(h.querySelector('img')).height),
+        topOfPage: mm(r(h).top - r(ps[1]).top),
+        text: h.textContent.trim().replace(/\s+/g, ' '),
+        // the header must not eat into the content area
+        clearsBody: r(h).bottom <= r(ps[1].querySelector('.rptpagebody')).top + 1
+      };
+    });
+    expect(g.onCover, 'the cover carries the mark at full size already').toBe(false);
+    expect(g.onEveryOther).toBe(true);
+    expect(g.logoHeight, 'a small mark, not the cover logo').toBeLessThan(12);
+    expect(g.topOfPage, 'it sits in the top page margin').toBeLessThan(18);
+    expect(g.clearsBody, 'it must not overlap the content area').toBe(true);
+    expect(g.text, 'draft dated until the report is issued').toMatch(/^Draft ·/);
+  });
+
+  test('the contents lists the numbered sections only, with no leader dots',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+
+      const toc = await page.evaluate(() => {
+        const ul = document.querySelector('#rpt .toc');
+        const first = ul.querySelector('li');
+        return {
+          firstEntry: first.textContent.trim().replace(/\s+/g, ' '),
+          // Limitations moved to the front matter, so References is 8
+          hasLimitations: /Limitations/.test(ul.textContent),
+          referencesNumber: (ul.textContent.match(/(\d+)\.\s*References/) || [])[1],
+          leaderBorder: getComputedStyle(first).borderBottomStyle
+        };
+      });
+      expect(toc.firstEntry, 'the contents starts at 1. Overview').toMatch(/^1\.\s*Overview/);
+      expect(toc.hasLimitations,
+        'Limitations is on the assessment page now, not a numbered section').toBe(false);
+      expect(toc.referencesNumber).toBe('8');
+      expect(toc.leaderBorder, 'dotted leaders made it harder to read').toBe('none');
+    });
 
   test('every page carries the draft stamp until the report is issued', async ({ page }) => {
     await newReport(page, 'classification');

@@ -350,9 +350,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt h2.numbered,.rpt h3.numbered{display:flex;gap:0;align-items:baseline}
 .rpt h2 .secno,.rpt h3 .secno{flex:0 0 2.8rem}
 .rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.9167rem;columns:1}
-.rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0;border-bottom:1px dotted #c9c9c9}
+.rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0}
 .rpt .toc li b{min-width:2.2rem;color:var(--navy)}
-.rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333;border-bottom-color:#e2e2e2}
+.rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333}
 .rpt .toc li.tsub b{min-width:2.4rem;color:#666;font-weight:600}
 .rpt .sigs{display:grid;grid-template-columns:1fr 1fr;gap:2.2rem;margin:1rem 0 .4rem}
 .rpt .sig .line{border-bottom:1.5px solid #333;height:2.7rem;margin-bottom:.35rem}
@@ -380,6 +380,12 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
 /* 8pt, matching the benchmark, with the contact line and the job line on one
    row at a 160mm measure and headroom for a long job number. */
+/* A small mark and the date, so a page separated from the report still says
+   whose it is and which issue. Draft-dated until the report is issued. */
+.rpthead{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding-bottom:2mm;border-bottom:1px solid var(--line);
+  font-size:.68rem;color:#555;letter-spacing:.02em}
+.rpthead img{height:8mm;width:auto;display:block;flex:none}
 .rpt footer{margin-top:2rem;border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
@@ -404,6 +410,10 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    page, so letting that one page overflow is safe. Print has no clipping
    container at all. */
 .rptpage.coverpage .rptpagebody{overflow:visible}
+/* Runs across the head of every page, in the top margin. Mirrors the fixed
+   header in the print rules below. */
+.rptpage .rpthead{position:absolute;left:0;right:0;top:6mm;margin:0;
+  padding-left:25mm;padding-right:25mm}
 /* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
 .rptpage .rptfoot{position:absolute;left:0;right:0;bottom:10mm;margin:0;
   padding-left:25mm;padding-right:25mm;
@@ -450,6 +460,12 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
      Safari in particular, are less consistent. A footer guaranteed on every
      page is what the Phase 3 server-side render is for. */
   .rpt .rptfoot{position:fixed;left:-25mm;right:-25mm;bottom:-14mm;margin:0;background:#fff;
+    padding-left:25mm;padding-right:25mm}
+  /* Same mechanism as the footer, and the same caveat: a fixed element is the
+     only way to repeat a header per page, and Safari is the least reliable
+     about it. top:-12mm puts it 6mm below the paper edge, inside the 18mm
+     top margin, so it cannot collide with the content area. */
+  .rpt .rpthead{position:fixed;left:-25mm;right:-25mm;top:-12mm;margin:0;background:#fff;
     padding-left:25mm;padding-right:25mm}
   /* 25mm sides give a 160mm measure, the same as the reports this is
      benchmarked against. At 16mm the text ran close enough to the paper edge
@@ -1967,7 +1983,6 @@ function buildReport(){
         <p>Date: ${d.reviewerSigDate?dt(d.reviewerSigDate):"Not signed"}</p></div>
     </div>`);
 
-  addSec("Limitations", sub=>`<p>${nl(d.limitations)}</p>`);
 
   addSec("References", sub=>{
     const refs = citedStandards(r).map(s=>STD_CITATIONS[s.ref]).filter(Boolean);
@@ -2091,9 +2106,10 @@ function buildReport(){
     if(info) apps.push({letter:"D", t:APPENDIX_TITLES.D, html:info});
   }
 
+  /* Starts at 1. The front matter that precedes it (what to do with this
+     report, the assessment summary, status, distribution and limitations) is
+     not listed: a reader has already passed it to reach this page. */
   const toc = `<ul class="toc breakafter">
-    <li><b>·</b> Document status &amp; distribution</li>
-    <li><b>·</b> What to do with this report</li>
     ${sections.map(s=>`<li><b>${s.n}.</b> ${esc(s.title)}</li>
       ${s.subs.map(x=>`<li class="tsub"><b>${x.no}</b> ${esc(x.t)}</li>`).join("")}`).join("")}
     ${apps.map(a=>`<li><b>${a.letter}</b> Appendix ${a.letter}: ${esc(a.t)}</li>`).join("")}
@@ -2101,6 +2117,8 @@ function buildReport(){
 
   $("rpt").innerHTML = `
   ${issuedState}
+  <header class="rpthead"><img src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
+   <span>${r.issued?"":"Draft · "}${dt(d.dateIssued)}</span></header>
   <div class="rpt-cover">
     <div class="coverphoto" aria-hidden="true"><span class="curve"></span></div>
     <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
@@ -2116,10 +2134,18 @@ function buildReport(){
     <p class="cmeta">Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
   </div>
 
-  <h2>Contents</h2>
-  ${toc}
+  <h2>What to do with this report</h2>
+  <p>This report supports your approval pathway and informs structural design and construction. Provide a copy to your
+     building designer or architect, your structural engineer, your certifier, your builder and your excavation contractor.
+     If any of your project team has questions about its contents, contact Abbot Design for clarification. Most problems
+     are cheapest to solve before concrete is poured.</p>
+  ${d.holds.length?`<p><b>Stages at which Abbot Design should be re-engaged:</b></p><ul>${d.holds.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
 
-  <h2>Document status</h2>
+  <h2 class="pagebreak">Geotechnical Assessment</h2>
+  <p><b>For:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
+  <p><b>At:</b> ${esc(addr)}${d.lotDp?` (${esc(d.lotDp)})`:""}</p>
+
+  <h3>Document status</h3>
   <table>
    <tr><th style="width:12%">Version</th><th>Author</th><th>Reviewer (approved for issue)</th><th style="width:16%">Date</th><th style="width:14%">Status</th></tr>
    <tr><td>${esc(d.revision)}</td>
@@ -2132,12 +2158,11 @@ function buildReport(){
   <table><tr><th>To</th><th style="width:22%">Format</th><th style="width:18%">Date</th></tr>
    ${d.dist.map(x=>`<tr><td>${esc(x.to)}</td><td>${esc(x.format)}</td><td>${dt(x.date)}</td></tr>`).join("")}</table>`:""}
 
-  <h2>What to do with this report</h2>
-  <p>This report supports your approval pathway and informs structural design and construction. Provide a copy to your
-     building designer or architect, your structural engineer, your certifier, your builder and your excavation contractor.
-     If any of your project team has questions about its contents, contact Abbot Design for clarification. Most problems
-     are cheapest to solve before concrete is poured.</p>
-  ${d.holds.length?`<p><b>Stages at which Abbot Design should be re-engaged:</b></p><ul>${d.holds.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
+  <h3>Limitations</h3>
+  <p>${nl(d.limitations)}</p>
+
+  <h2 class="pagebreak">Contents</h2>
+  ${toc}
 
   ${sections.map(s=>`<h2 class="numbered${s.newPage?" pagebreak":""}"><span class="secno">${s.n} </span>${esc(s.title)}</h2>${s.html}`).join("")}
 
@@ -2207,6 +2232,9 @@ function renderPages(){
      stranded alone at the top of a final sheet. Print does the same thing with
      position:fixed. */
   const foot = src.querySelector(":scope > .rptfoot");
+  /* The header runs on every page except the cover, which carries the mark at
+     full size already: a second small one above it just repeats the logo. */
+  const head = src.querySelector(":scope > .rpthead");
 
   let page, body;
   function newPage(){
@@ -2215,6 +2243,7 @@ function renderPages(){
     page.append(body);
     if(wm) page.append(wm.cloneNode(true));
     if(foot) page.append(foot.cloneNode(true));
+    if(head) page.append(head.cloneNode(true));
     host.append(page);
   }
   const empty = () => body.children.length === 0;
@@ -2249,7 +2278,7 @@ function renderPages(){
 
   newPage();
   for(const el of [...src.children]){
-    if(el === wm || el === foot || el.classList.contains("no-print")) continue;
+    if(el === wm || el === foot || el === head || el.classList.contains("no-print")) continue;
 
     if((el.classList.contains("pagebreak") || el.style.breakBefore === "page") && !empty()) newPage();
 
@@ -2268,7 +2297,10 @@ function renderPages(){
         else { body.append(el.cloneNode(true)); page.classList.add("grow"); }
       }
     }
-    if(el.classList.contains("rpt-cover")) page.classList.add("coverpage");
+    if(el.classList.contains("rpt-cover")){
+      page.classList.add("coverpage");
+      const h = page.querySelector(":scope > .rpthead"); if(h) h.remove();
+    }
     if(el.classList.contains("rpt-cover") || el.classList.contains("breakafter")
        || el.style.breakAfter === "page") newPage();   /* break-after:page */
   }
