@@ -266,6 +266,29 @@ test.describe('paginated preview', () => {
     expect(cover.preparedBreaks, 'the client sits on its own line under the label').toBe(true);
   });
 
+  test('the cover text clears the photo band', async ({ page }) => {
+    // The band's arc is deepest at the centre of the page, which is where the
+    // detail block sits, so that is the edge the text has to clear.
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    await page.evaluate(() => document.fonts.ready);
+
+    const g = await page.evaluate(() => {
+      const mm = px => +(px / (96 / 25.4)).toFixed(1);
+      const pg = document.querySelector('.rptpage');
+      const r = e => e.getBoundingClientRect();
+      const blk = pg.querySelector('.rpt-cover .coverblock');
+      const ph = pg.querySelector('.rpt-cover .coverphoto');
+      const SAG = 17.2;                       // measured from the reference artwork
+      return { textBottom: mm(r(blk).bottom - r(pg).top),
+               bandTopAtCentre: mm(r(ph).top - r(pg).top) + SAG };
+    });
+    expect(g.textBottom, 'the job block must not sit over the photo')
+      .toBeLessThan(g.bandTopAtCentre);
+  });
+
   test('the cover rules run to the paper edge and the detail block is left aligned',
     async ({ page }) => {
       await newReport(page, 'classification');
