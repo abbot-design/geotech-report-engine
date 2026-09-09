@@ -332,9 +332,6 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .sig img.sigimg{display:block;height:56px;margin-bottom:.2rem;border-bottom:1.5px solid #333;padding-bottom:.2rem}
 .sigpad{border:1.5px dashed var(--line-strong);border-radius:8px;background:#fff;width:100%;max-width:430px;height:130px;touch-action:none;display:block}
 .rpt .sig p{margin:.1rem 0;font-size:.88rem}
-.rpt .coverfig{margin:1.8rem auto 0;max-width:520px;border:1px solid #c9c9c9;padding:.3rem;background:#fff}
-.rpt .coverfig img{width:100%;display:block}
-.rpt .coverfig figcaption{font-size:.78rem;color:#555;padding-top:.25rem}
 .rpt h3{font-size:1rem;font-weight:700;margin:.9rem 0 .25rem}
 .rpt h4{font-size:.92rem;margin:.5rem 0 .2rem}
 .rpt .tblsig{height:38px;display:block;margin:0 auto .2rem}
@@ -741,7 +738,7 @@ function blank(type){
       incLegend:true, incClassDefs:true, incGeneral:true, appGeneral:GENERAL_NOTES_DEFAULT,
       infoDocs:{},   /* id -> true/false, only where the engineer overrode the default */
       distribution:"", dist:[], recRows:[], awaitingResults:false },
-    boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [], siteFigure:null, siteFigureCap:"",
+    boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [],
     source: null   // reserved: quote-system prefill (phase 2)
   };
 }
@@ -1069,8 +1066,7 @@ function sectionTouched(r, secId){
      count towards that section, not Site description. */
   if(secId==="client") return (r.plans||[]).length>0 ||
                               (SECFIELDS.client).some(k=>String(r.d[k]||"").trim()!=="");
-  if(secId==="site")   return !!r.siteFigure ||
-                              (SECFIELDS.site).some(k=>String(r.d[k]||"").trim()!=="");
+  if(secId==="site")   return (SECFIELDS.site).some(k=>String(r.d[k]||"").trim()!=="");
   if(secId==="recs")   return r.d.footings.length>0 || (r.d.recRows||[]).length>0 ||
                               (SECFIELDS.recs).some(k=>String(r.d[k]||"").trim()!=="");
   if(secId==="slope")  return (r.d.slopeHazards||[]).length>0 || (r.d.riskLifeRows||[]).length>0 ||
@@ -1373,14 +1369,7 @@ site(r){ return `
   ${F("history","Site history & fill risk",{type:"textarea",wide:1,ph:"Previous use, filling, dams, demolition"})}
  </div>
 </fieldset>
-<fieldset><legend>Site location image</legend>
- <div class="inline">
-  <button type="button" id="sitefigbtn">🗺 Add locality / aerial image</button>
-  <input type="file" id="sitefigfile" accept="image/*" hidden aria-hidden="true">
- </div>
- <p class="hint">Appears on the cover and in section 2.</p>
- <div id="sitefigwrap" style="margin-top:.7rem"></div>
-</fieldset>`; },
+`; },
 
 field(r){ return `
 <fieldset><legend>Fieldwork visit</legend>
@@ -1778,7 +1767,7 @@ function renderEditor(opts){
   const sec = visibleSections()[sectionIdx];
   $("form").innerHTML = TPL[sec.id](report());
   renderBoreholes(); renderDcps(); renderSamples(); renderPhotos(); renderPlans(); renderDist(); renderRecRows();
-  renderSlopeHazards(); renderRiskLife(); renderSiteFig(); renderAttachments(); initSigPads(); renderReviewGaps();
+  renderSlopeHazards(); renderRiskLife(); renderAttachments(); initSigPads(); renderReviewGaps();
   const first = $("form").querySelector("input,select,textarea,button");
   if(isNav) window.scrollTo({top:0, left:0, behavior:"auto"});
   if(focusFirst && first && matchMedia("(min-width:700px)").matches) first.focus({preventScroll:true});
@@ -1830,9 +1819,6 @@ function buildReport(){
       <div>Surface drainage</div><div>${esc(d.drainage)||"Not recorded"}</div>
       <div>Neighbouring environment</div><div>${esc(d.neighbours)||"Not recorded"}</div>
     </div>
-    ${r.siteFigure?`<figure style="margin:.8rem 0;border:1px solid #bbb;padding:.3rem;max-width:560px">
-      <img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location image")}" style="width:100%;display:block">
-      <figcaption style="font-size:.8rem;padding-top:.25rem"><b>Figure 1:</b> ${esc(r.siteFigureCap||"Site location")}</figcaption></figure>`:""}
     ${sub("Geology")}
     <p>${esc(d.geologyUnit)||"Not recorded"}${d.geologyMap?` (${esc(d.geologyMap)})`:""}</p>
     ${sub("Site history & fill risk")}
@@ -2100,8 +2086,6 @@ function buildReport(){
       <div class="meta"><b>Prepared for:</b><br>${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</div>
       <div class="meta jobline"><b>Job No:</b> ${esc(d.jobNo)}<br>Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</div>
     </div>
-    ${r.siteFigure?`<figure class="coverfig"><img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location")}">
-      <figcaption>${esc(r.siteFigureCap||"Site location")}</figcaption></figure>`:""}
   </div>
 
   <h2>Contents</h2>
@@ -2383,18 +2367,6 @@ function initSigPads(){
     cv.addEventListener("pointerup",done); cv.addEventListener("pointercancel",done);
   });
 }
-function renderSiteFig(){
-  const el=document.getElementById("sitefigwrap"); if(!el) return;
-  const r=report();
-  el.innerHTML = r.siteFigure ? `<figure style="margin:0;max-width:420px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff">
-    <img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location image")}" style="width:100%;display:block">
-    <figcaption style="padding:.5rem">
-      <label for="sitefigcap">Image caption</label>
-      <input id="sitefigcap" value="${esc(r.siteFigureCap)}" placeholder="e.g. Site location, source: SIX Maps NSW">
-      <button type="button" id="delsitefig" class="danger" style="margin-top:.4rem;width:100%">Remove image</button>
-    </figcaption></figure>` : "";
-}
-
 /* ============================================================
    Export / import
    ============================================================ */
@@ -2487,7 +2459,6 @@ document.addEventListener("click",e=>{
     saveDb(); renderRecRows(); renderTabs();
     noteUndo(`${gone && gone.area ? gone.area : "Recommendation"} removed.`, ()=>report().d.recRows.splice(i,0,gone)); }
   if(t.id==="ctx"){ show("home"); renderHome(); }
-  if(t.id==="sitefigbtn") $("sitefigfile").click();
   if(t.dataset.clearsig){ report().d[t.dataset.clearsig]=""; saveDb(); initSigPads(); }
   if(t.id==="submitreview"){
     const gaps=requirements(report());
@@ -2500,7 +2471,6 @@ document.addEventListener("click",e=>{
     ask("Return this report to the author as a draft?","Request changes").then(ok=>{
       if(ok){ report().status="draft"; saveDb(); renderEditor({focus:false}); note("Returned to draft."); }});
   }
-  if(t.id==="delsitefig"){ report().siteFigure=null; report().siteFigureCap=""; saveDb(); renderSiteFig(); }
   if(t.dataset.delphoto!==undefined){ const i=+t.dataset.delphoto, gone=report().photos.splice(i,1)[0];
     saveDb(); renderPhotos(); renderTabs();
     noteUndo(`Photo ${i+1} removed.`, ()=>report().photos.splice(i,0,gone)); }
@@ -2559,7 +2529,6 @@ function onFieldEdit(e){
       if(head) head.textContent = `Scenario ${i+1}${el.value?": "+el.value:""}`; } }
   if(el.id==="f_includeSlope"){ r.d.includeSlope=el.checked;
     sectionIdx=Math.min(sectionIdx, visibleSections().length-1); saveDb(); renderEditor({focus:false}); return; }
-  if(el.id==="sitefigcap"){ r.siteFigureCap=el.value; saveDb(); }
   refreshTabsSoon();
 }
 /* Bound to BOTH events on purpose: autofill, and <select>/<input type=date> on
@@ -2609,10 +2578,6 @@ document.addEventListener("change",e=>{
         (report().plans||(report().plans=[])).push({caption:"",dataUrl:d}); saveDb(); renderEditor({focus:false}); note("Site plan added.");
       }).catch(()=>imgError(f));
     }); e.target.value=""; }
-  if(e.target.id==="sitefigfile"){ const f=e.target.files[0];
-    if(f) compressImage(f).then(d=>{ report().siteFigure=d; saveDb(); renderEditor({focus:false}); note("Site image added."); })
-      .catch(()=>imgError(f));
-    e.target.value=""; }
   if(e.target.id==="importfile"){
     const f=e.target.files[0]; if(!f) return;
     f.text().then(txt=>{ try{ const r=JSON.parse(txt);

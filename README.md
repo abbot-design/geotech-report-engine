@@ -24,7 +24,9 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
   seen in competitor samples).
 - **Dynamic field records**: boreholes with layered soil profiles, DCP tests, lab samples (LL/LS).
 - **Photo capture** from the device camera, compressed on-device (~1400 px JPEG) into the report
-  appendix with captions.
+  appendix with captions. Site imagery lives there, in Appendix B, rather than on the cover: the
+  cover carries the brand photo, and a client looking for the site sees it with the rest of the
+  photographic record.
 - **Completeness engine**: required content per report type. The section tabs are the progress
   indicator — green when a section is complete, orange-dashed when started, plain when untouched —
   and a section only counts as complete once something has actually been entered in it. PDF is
