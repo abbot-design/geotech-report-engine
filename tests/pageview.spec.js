@@ -284,14 +284,46 @@ test.describe('paginated preview', () => {
           bleedRight: +(r(pg).right - r(cov).right).toFixed(1),
           // the detail block starts where the centred title's text starts
           offset: +(r(blk).left - rg.getBoundingClientRect().left).toFixed(1),
-          stripAtFoot: r(cov.querySelector('.contactstrip')).bottom > r(cov).top + r(cov).height * 0.75
+          // the firm's contact details are on the running footer, not repeated
+          // in a block of their own on the cover
+          noContactStrip: !cov.querySelector('.contactstrip')
         };
       });
       // A clip on .rptpagebody used to cut the bleed back to the text measure.
       expect(Math.abs(geom.bleedLeft), 'the rules must reach the paper edge').toBeLessThan(1.5);
       expect(Math.abs(geom.bleedRight)).toBeLessThan(1.5);
       expect(Math.abs(geom.offset), 'detail block aligns under the title').toBeLessThan(1.5);
-      expect(geom.stripAtFoot, 'the contact strip sits at the foot of the cover').toBe(true);
+      expect(geom.noContactStrip).toBe(true);
+    });
+
+  test('the head and foot rules are the same distance from the page edges',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+
+      const g = await page.evaluate(() => {
+        const mm = px => +(px / (96 / 25.4)).toFixed(1);
+        const pg = document.querySelector('.rptpage');
+        const cov = pg.querySelector('.rpt-cover');
+        const ft = pg.querySelector('.rptfoot');
+        const r = e => e.getBoundingClientRect();
+        return {
+          navyFromTop: mm(r(cov).top - r(pg).top),
+          skyFromBottom: mm(r(pg).bottom - r(ft).top),
+          skyIsFooterRule: getComputedStyle(ft).borderTopWidth,
+          footerBleedL: mm(r(ft).left - r(pg).left),
+          footerBleedR: mm(r(pg).right - r(ft).right)
+        };
+      });
+      expect(Math.abs(g.navyFromTop - g.skyFromBottom),
+        'the sky rule sits as far from the foot as the navy rule is from the head')
+        .toBeLessThan(0.5);
+      expect(g.skyIsFooterRule).toBe('6px');
+      expect(Math.abs(g.footerBleedL), 'the footer rule bleeds too').toBeLessThan(1.5);
+      expect(Math.abs(g.footerBleedR)).toBeLessThan(1.5);
     });
 
   test('body copy, lists and the contents are all set at the same size', async ({ page }) => {

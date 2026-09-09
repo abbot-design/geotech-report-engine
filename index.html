@@ -284,10 +284,13 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    context the report is being rendered in. */
 .rpt{--bleed:2.4rem}
 .rptpage .rptpagebody{--bleed:25mm}
-.rpt-cover{display:flex;flex-direction:column;align-items:center;min-height:248mm;
-  text-align:center;padding:2.4rem calc(1rem + var(--bleed)) 2rem;
+/* The sky rule is no longer the cover's own bottom border: it has become the
+   division line above the running footer, set the same distance from the foot
+   of the page as the navy rule is from the head. */
+.rpt-cover{min-height:248mm;text-align:center;
+  padding:2.4rem calc(1rem + var(--bleed)) 2rem;
   margin-left:calc(-1 * var(--bleed));margin-right:calc(-1 * var(--bleed));
-  border-top:10px solid var(--navy);border-bottom:6px solid var(--sky)}
+  border-top:10px solid var(--navy)}
 /* The wordmark is the logo itself, so the cover carries the artwork rather
    than setting the firm name as type. SVG so it stays crisp at any size and
    costs 14 KB rather than a bitmap. */
@@ -296,7 +299,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 /* Everything under the title reads as a left-aligned block rather than a stack
    of centred lines. The block shrinks to its widest line and is centred as a
    whole, so its left edge sits under the start of the centred title. */
-.rpt-cover .coverblock{text-align:left;max-width:100%}
+.rpt-cover .coverblock{display:inline-block;text-align:left;max-width:100%}
 .rpt-cover .coverblock h1{text-align:center}
 .rpt-cover .tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:.35rem;max-width:56ch;margin-left:auto;margin-right:auto}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 .4rem}
@@ -327,9 +330,6 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .coverfig{margin:1.8rem auto 0;max-width:520px;border:1px solid #c9c9c9;padding:.3rem;background:#fff}
 .rpt .coverfig img{width:100%;display:block}
 .rpt .coverfig figcaption{font-size:.78rem;color:#555;padding-top:.25rem}
-/* Sits at the foot of the cover, not floating under the title block. */
-.rpt .contactstrip{margin-top:auto;padding-top:1.6rem;width:100%;text-align:justify;
-  font-size:.82rem;color:#333;letter-spacing:.02em}
 .rpt h3{font-size:1rem;font-weight:700;margin:.9rem 0 .25rem}
 .rpt h4{font-size:.92rem;margin:.5rem 0 .2rem}
 .rpt .tblsig{height:38px;display:block;margin:0 auto .2rem}
@@ -351,7 +351,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
 /* 8pt, matching the benchmark, with the contact line and the job line on one
    row at a 160mm measure and headroom for a long job number. */
-.rpt footer{margin-top:2rem;border-top:1px solid #999;padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
+.rpt footer{margin-top:2rem;border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
   font-size:5rem;color:rgba(198,40,40,.14);border:6px solid rgba(198,40,40,.14);padding:.4rem 2rem;white-space:nowrap}
@@ -376,9 +376,10 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    container at all. */
 .rptpage.coverpage .rptpagebody{overflow:visible}
 /* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
-.rptpage .rptfoot{position:absolute;left:25mm;right:25mm;bottom:10mm;margin:0;
+.rptpage .rptfoot{position:absolute;left:0;right:0;bottom:10mm;margin:0;
+  padding-left:25mm;padding-right:25mm;
   display:flex;justify-content:space-between;gap:.6rem;
-  border-top:1px solid #999;padding-top:.5rem;font-size:.68rem;color:#444}
+  border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444}
 /* A single block taller than a page (an oversized table row) grows its page
    rather than being clipped: losing content silently would be worse than an
    honest long page. */
@@ -419,7 +420,8 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
      Chrome, Edge and Firefox repeat fixed elements reliably; Safari, and iOS
      Safari in particular, are less consistent. A footer guaranteed on every
      page is what the Phase 3 server-side render is for. */
-  .rpt .rptfoot{position:fixed;left:0;right:0;bottom:-14mm;margin:0;background:#fff}
+  .rpt .rptfoot{position:fixed;left:-25mm;right:-25mm;bottom:-14mm;margin:0;background:#fff;
+    padding-left:25mm;padding-right:25mm}
   /* 25mm sides give a 160mm measure, the same as the reports this is
      benchmarked against. At 16mm the text ran close enough to the paper edge
      to read as a printed web page rather than a report. */
@@ -2094,8 +2096,6 @@ function buildReport(){
     </div>
     ${r.siteFigure?`<figure class="coverfig"><img src="${r.siteFigure}" alt="${esc(r.siteFigureCap||"Site location")}">
       <figcaption>${esc(r.siteFigureCap||"Site location")}</figcaption></figure>`:""}
-    <div class="contactstrip">${esc(FIRM.address)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.web)}<br>
-      ${esc(FIRM.entity)} · ${esc(FIRM.abn)}</div>
   </div>
 
   <h2>Contents</h2>
