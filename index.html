@@ -446,7 +446,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   #preview{border:0;border-radius:0}
   .rpt{padding:0}
   .rpt h2,.rpt h3,.rpt h4{break-after:avoid}
-  .rpt table,.rpt .rowitem,.rpt figure,.rpt .classbox{break-inside:avoid}
+  .rpt table,.rpt .rowitem,.rpt figure,.rpt .classbox,.rpt .keep{break-inside:avoid}
   .rpt-cover{break-after:page}
   .pagebreak{break-before:page}
   .breakafter{break-after:page}
@@ -1840,12 +1840,15 @@ function buildReport(){
   const sections=[];
   /* opts.newPage starts the section on a fresh sheet. Most sections run on
      from the previous one; the ones a reader looks up rather than reads
-     through get their own page. */
+     through get their own page. opts.keep holds the whole section, heading
+     included, on one page: a certification block split across a page break
+     separates a signature from the name it certifies. */
   function addSec(title, builder, opts){
     const n=sections.length+1; let s=0; const subs=[];
     const sub=t=>{ s++; subs.push({no:`${n}.${s}`, t});
       return `<h3 class="numbered"><span class="secno">${n}.${s} </span>${esc(t)}</h3>`; };
-    sections.push({n, title, subs, html: builder(sub), newPage: !!(opts && opts.newPage)});
+    sections.push({n, title, subs, html: builder(sub),
+                   newPage: !!(opts && opts.newPage), keep: !!(opts && opts.keep)});
   }
 
   addSec("Overview", sub=>{
@@ -1988,7 +1991,7 @@ function buildReport(){
         ${d.reviewerReg?`<p>${nl(d.reviewerReg)}</p>`:""}
         <p>Reviewer</p>
         <p>Date: ${d.reviewerSigDate?dt(d.reviewerSigDate):"Not signed"}</p></div>
-    </div>`);
+    </div>`, {keep:true});
 
 
   addSec("References", sub=>{
@@ -2176,7 +2179,14 @@ function buildReport(){
   <h2 class="pagebreak">Contents</h2>
   ${toc}
 
-  ${sections.map(s=>`<h2 class="numbered${s.newPage?" pagebreak":""}"><span class="secno">${s.n} </span>${esc(s.title)}</h2>${s.html}`).join("")}
+  ${sections.map(s=>{
+    const head = `<h2 class="numbered${s.newPage && !s.keep?" pagebreak":""}"><span class="secno">${s.n} </span>${esc(s.title)}</h2>`;
+    /* Wrapping makes the section a single top-level block: the paginated
+       preview treats each top-level block as indivisible unless it is a table,
+       and print gets break-inside:avoid on the wrapper. Any page break the
+       section asked for moves onto the wrapper, where the paginator can see it. */
+    return s.keep ? `<section class="keep${s.newPage?" pagebreak":""}">${head}${s.html}</section>` : head + s.html;
+  }).join("")}
 
   ${apps.map(a=>`<h2 class="pagebreak">Appendix ${a.letter}: ${esc(a.t)}</h2>${a.html}`).join("")}
 

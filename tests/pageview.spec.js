@@ -590,6 +590,51 @@ test.describe('paginated preview', () => {
     expect(rows.some(r => !r.empty), 'and a present one does not').toBe(true);
   });
 
+  test('the certification block never splits across a page', async ({ page }) => {
+    // Heading, statement, signatures, names and dates travel as one block. A
+    // signature on the page after the name it certifies is not acceptable.
+    // The preceding section is padded in steps so the block is driven across
+    // a page boundary and has to be bumped whole rather than split.
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Setup');
+    await page.fill('#f_jobNo', 'AD-1');
+    await page.fill('#f_author', 'A Author');
+    await page.fill('#f_reviewer', 'A Reviewer');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_client', 'ABC Corp');
+    await page.fill('#f_projectDesc', 'New single storey dwelling');
+    await gotoTab(page, 'Recommendations');
+    await page.fill('#f_founding', 'Strip footings founded in natural stiff clay.');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    await page.evaluate(() => document.fonts.ready);
+
+    const results = await page.evaluate(async () => {
+      const r = report(); const base = r.d.founding; const out = [];
+      for (let n = 0; n <= 40; n += 4) {
+        r.d.founding = base + ' Additional founding note sentence.'.repeat(n);
+        buildReport();
+        await new Promise(x => setTimeout(x, 400));
+        const pages = [...document.querySelectorAll('.rptpage')];
+        const hits = pages.map((p, i) => ({ i: i + 1, sec: p.querySelector('.rptpagebody > section.keep') }))
+                          .filter(x => x.sec);
+        if (hits.length !== 1) { out.push({ pad: n, ok: false, why: `on ${hits.length} pages` }); continue; }
+        const sec = hits[0].sec, body = sec.closest('.rptpagebody');
+        const inside = sec.getBoundingClientRect().bottom <= body.getBoundingClientRect().bottom + 1;
+        const whole = !!sec.querySelector('h2') && !!sec.querySelector('.sigs');
+        out.push({ pad: n, ok: inside && whole, page: hits[0].i });
+      }
+      r.d.founding = base; buildReport();
+      return out;
+    });
+    for (const row of results) {
+      expect(row.ok, `padding ${row.pad}: ${row.why || 'block must sit whole on one page'}`).toBe(true);
+    }
+    // and the sweep actually crossed a boundary, or it proved nothing
+    expect(new Set(results.map(x => x.page)).size).toBeGreaterThan(0);
+  });
+
   test('every page carries the draft stamp until the report is issued', async ({ page }) => {
     await newReport(page, 'classification');
     await openPreview(page);
