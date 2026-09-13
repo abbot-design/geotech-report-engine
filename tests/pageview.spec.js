@@ -213,6 +213,50 @@ test.describe('paginated preview', () => {
       .not.toContain('Palmer Street');
   });
 
+  test('under print media, the sheets sit flush with nothing spilling past a page',
+    async ({ page }) => {
+      // Regression: the page view's screen rules are written against
+      // .pageview #rptpages, which out-specified the bare #rptpages in the
+      // print block, so the container kept its screen padding in print.
+      // 16px of it shifted every page sideways; 22px above the first sheet
+      // and 38px below the last pushed those sheets over the paper edge and
+      // put a blank page after each.
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+      await page.waitForSelector('.rptpage');
+      await page.emulateMedia({ media: 'print' });
+
+      const g = await page.evaluate(() => {
+        const mm = px => +(px / (96 / 25.4)).toFixed(1);
+        const host = document.getElementById('rptpages');
+        const cs = getComputedStyle(host);
+        const pages = [...host.querySelectorAll('.rptpage')];
+        return {
+          hostPadding: cs.padding, hostMargin: cs.margin,
+          hostLeftMm: mm(host.getBoundingClientRect().left),
+          sheets: pages.map(pg => {
+            const r = pg.getBoundingClientRect();
+            let spill = 0;
+            pg.querySelectorAll('*').forEach(el => {
+              spill = Math.max(spill, el.getBoundingClientRect().bottom - r.bottom); });
+            return { h: mm(r.height), w: mm(r.width), left: mm(r.left), spillMm: mm(spill) };
+          })
+        };
+      });
+      await page.emulateMedia({ media: null });
+
+      expect(g.hostPadding, 'container padding leaks into every printed page').toBe('0px');
+      expect(g.hostMargin).toBe('0px');
+      expect(g.hostLeftMm, 'anything but zero is a sideways shift on paper').toBe(0);
+      for (const sh of g.sheets) {
+        expect(sh.w).toBe(210);
+        expect(sh.h).toBe(297);
+        expect(sh.left).toBe(0);
+        expect(sh.spillMm, 'content past the sheet foot becomes a blank page').toBeLessThanOrEqual(0);
+      }
+    });
+
   test('each sheet is exactly A4', async ({ page }) => {
     // The sheet is the printed page, with @page margin 0, so its box must be
     // 210 by 297mm to the millimetre or every sheet after the first drifts.
