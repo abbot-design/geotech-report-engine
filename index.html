@@ -809,10 +809,12 @@ function blank(type){
    ============================================================ */
 const PREFILL_V = "1";
 /* Payload key -> report.d key. The one place the engine side of the
-   contract is edited; change it here, in docs/qb-contract.md, and in
-   tests/prefill.spec.js. cp/ce are accepted but the Quickbase formula
-   does not send them by default — the cover page does not need a
-   client's phone and email. */
+   contract is edited; change it here and in the field-map table of
+   docs/qb-contract.md. tests/integration/quickbase-prefill.spec.js reads
+   both and fails until they agree; its payload fixture then needs the new
+   key too. cp/ce are accepted but the Quickbase formula does not send
+   them by default — the cover page does not need a client's phone and
+   email. */
 const PREFILL_MAP = {
   jn:"jobNo",  cl:"client",   co:"careOf",  pd:"projectDesc",
   st:"street", sb:"suburb",   sa:"state",   pc:"postcode",

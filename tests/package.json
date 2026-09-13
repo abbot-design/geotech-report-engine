@@ -3,7 +3,12 @@
   "private": true,
   "description": "Dev-only Playwright tests for the report engine. Not part of the deployed app.",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:list": "playwright test --list",
+    "test:e2e": "playwright test e2e",
+    "test:regression": "playwright test regression",
+    "test:integration": "playwright test integration",
+    "test:a11y": "playwright test accessibility"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"

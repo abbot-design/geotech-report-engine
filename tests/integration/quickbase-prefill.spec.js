@@ -13,57 +13,48 @@
 // exercised here: there is no Quickbase sandbox. What is tested is
 // everything from the URL fragment onwards.
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 const { gotoTab } = require('../helpers');
-
-// The canonical payload. Mirrors the field map table in docs/qb-contract.md
-// and the Quickbase formula in the same document.
-const PAYLOAD = {
-  qb:  '1',
-  ty:  'classification',
-  rid: '4821',
-  jn:  'AD-2026-014',
-  cl:  'Example Client Pty Ltd',
-  co:  'Jane Architect',
-  cp:  '0412 345 678',
-  ce:  'jane@example.com',
-  pd:  'New single-storey dwelling and detached garage',
-  st:  '12 Example Road',
-  sb:  'Cessnock',
-  sa:  'NSW',
-  pc:  '2325',
-  ld:  'Lot 12 DP 1234567',
-  cc:  'Cessnock City Council',
-  au:  'Ryan Chalmers',
-  aq:  'BEng (Civil) MIEAust CPEng',
-  ar:  'NER 1234567',
-  rv:  'Simon Carroll',
-  rq:  'BEng (Civil) MIEAust',
-  rr:  'NER 7654321',
-};
-
-// Payload key -> the DOM id of the field it must land in.
-const LANDS_IN = {
-  jn: '#f_jobNo',   cl: '#f_client',   co: '#f_careOf', pd: '#f_projectDesc',
-  cp: '#f_clientPhone', ce: '#f_clientEmail',
-  st: '#f_street',  sb: '#f_suburb',   sa: '#f_state',  pc: '#f_postcode',
-  ld: '#f_lotDp',   cc: '#f_council',  au: '#f_author',
-  aq: '#f_authorQual',   ar: '#f_authorReg',
-  rv: '#f_reviewer',     rq: '#f_reviewerQual', rr: '#f_reviewerReg',
-};
+const { PAYLOAD, LANDS_IN, hash, openPrefilled } = require('../fixtures/quickbase-payload');
 
 const PAYLOAD_LD = PAYLOAD.ld;
 
-const hash = (obj) => '#' + new URLSearchParams(obj).toString();
-
-async function open(page, payload) {
-  await page.goto('/index.html' + hash(payload));
-  await page.waitForSelector('#view-editor:not([hidden])');
+// The field-map table in docs/qb-contract.md, read as { payloadKey: engineKey }.
+// Only rows whose engine column is a plain `identifier` count; rid and ty are
+// documented there too but steer the import rather than fill a field.
+function fieldMapFromContract() {
+  const doc = fs.readFileSync(path.join(__dirname, '../../docs/qb-contract.md'), 'utf8');
+  const map = {};
+  for (const m of doc.matchAll(/^\| `(\w+)` \| `(\w+)` \|/gm)) map[m[1]] = m[2];
+  return map;
 }
+
+test.describe('the contract has one source of truth', () => {
+  // docs/qb-contract.md says "change the map, change this document, run the
+  // tests". This is the test that makes forgetting the second step fail.
+  test('PREFILL_MAP in index.html matches the field-map table in docs/qb-contract.md',
+    async ({ page }) => {
+      await page.goto('/index.html');
+      const engine = await page.evaluate(() => PREFILL_MAP);
+      const documented = fieldMapFromContract();
+      expect(Object.keys(documented).length, 'the table parsed').toBeGreaterThan(10);
+      expect(engine).toEqual(documented);
+    });
+
+  test('the test payload exercises every key the engine accepts', async ({ page }) => {
+    await page.goto('/index.html');
+    const engineKeys = await page.evaluate(() => Object.keys(PREFILL_MAP).sort());
+    expect(Object.keys(LANDS_IN).sort()).toEqual(engineKeys);
+    expect(Object.keys(PAYLOAD).filter(k => !['qb', 'ty', 'rid'].includes(k)).sort())
+      .toEqual(engineKeys);
+  });
+});
 
 test.describe('Quickbase prefill', () => {
 
   test('every mapped field lands in the right input', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
 
     // Setup section fields.
     await gotoTab(page, 'Setup');
@@ -81,19 +72,19 @@ test.describe('Quickbase prefill', () => {
   });
 
   test('report type from the payload is honoured', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ty: 'comprehensive' });
+    await openPrefilled(page, { ...PAYLOAD, ty: 'comprehensive' });
     const type = await page.evaluate(() => report().type);
     expect(type).toBe('comprehensive');
   });
 
   test('an unknown report type falls back rather than failing', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ty: 'not-a-real-type' });
+    await openPrefilled(page, { ...PAYLOAD, ty: 'not-a-real-type' });
     const type = await page.evaluate(() => report().type);
     expect(type).toBe('classification');
   });
 
   test('provenance is recorded in report.source', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     const src = await page.evaluate(() => report().source);
     expect(src).toMatchObject({ system: 'quickbase', recordId: '4821' });
     expect(src.receivedAt).toBeTruthy();
@@ -102,13 +93,13 @@ test.describe('Quickbase prefill', () => {
   // The whole reason the payload rides in the fragment rather than the query
   // string: it must not reach a server, and must not linger anywhere after.
   test('the fragment is scrubbed from the URL before the user sees it', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     expect(page.url()).not.toContain('#');
     expect(page.url()).not.toContain('Example Client');
   });
 
   test('client details never appear in a history entry', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     const entries = await page.evaluate(() => history.length);
     expect(entries).toBeGreaterThan(0);
     // replaceState overwrote the payload entry, so going back cannot resurrect it.
@@ -116,22 +107,22 @@ test.describe('Quickbase prefill', () => {
   });
 
   test('clicking the Quickbase button twice yields one report, not two', async ({ page }) => {
-    await open(page, PAYLOAD);
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     const count = await page.evaluate(() => Object.keys(db).length);
     expect(count).toBe(1);
   });
 
   test('a different job from the same app makes a separate report', async ({ page }) => {
-    await open(page, PAYLOAD);
-    await open(page, { ...PAYLOAD, rid: '4822', cl: 'Second Client' });
+    await openPrefilled(page, PAYLOAD);
+    await openPrefilled(page, { ...PAYLOAD, rid: '4822', cl: 'Second Client' });
     const count = await page.evaluate(() => Object.keys(db).length);
     expect(count).toBe(2);
   });
 
   // Contract drift must be visible to the engineer, never silent.
   test('an unrecognised key is reported, not silently dropped', async ({ page }) => {
-    await open(page, { ...PAYLOAD, zz: 'something new' });
+    await openPrefilled(page, { ...PAYLOAD, zz: 'something new' });
     const bar = page.locator('#prefillbar');
     await expect(bar).toBeVisible();
     await expect(bar).toContainText('not recognised');
@@ -139,7 +130,7 @@ test.describe('Quickbase prefill', () => {
   });
 
   test('a complete payload reports no outstanding setup or client gaps', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     const bar = page.locator('#prefillbar');
     await expect(bar).toBeVisible();
     await expect(bar).toContainText('Prefilled');
@@ -150,7 +141,7 @@ test.describe('Quickbase prefill', () => {
     // Drop the fields a thin Quickbase setup would not have.
     const thin = { ...PAYLOAD };
     delete thin.rv; delete thin.ld; delete thin.sb; delete thin.pc;
-    await open(page, thin);
+    await openPrefilled(page, thin);
     const bar = page.locator('#prefillbar');
     await expect(bar).toBeVisible();
     await expect(bar).toContainText('still need entering');
@@ -160,7 +151,7 @@ test.describe('Quickbase prefill', () => {
   });
 
   test('the banner can be dismissed', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await page.click('#prefilldismiss');
     await expect(page.locator('#prefillbar')).toBeHidden();
   });
@@ -187,7 +178,7 @@ test.describe('Quickbase prefill', () => {
   // The fragment is scrubbed after use, so a second link into the same tab is
   // a same-document navigation that does not reload the page.
   test('a second link in an already-open tab still opens its job', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await page.evaluate(h => { location.hash = h; },
       '#' + new URLSearchParams({ ...PAYLOAD, rid: '4901', cl: 'Third Client' }).toString());
     // The editor reopens at Setup, so assert the state rather than the DOM.
@@ -204,7 +195,7 @@ test.describe('Quickbase prefill', () => {
 
   test('empty values in the payload do not overwrite defaults', async ({ page }) => {
     // State defaults to NSW in blank(); an empty sa must not blank it.
-    await open(page, { ...PAYLOAD, sa: '' });
+    await openPrefilled(page, { ...PAYLOAD, sa: '' });
     const state = await page.evaluate(() => report().d.state);
     expect(state).toBe('NSW');
   });
@@ -215,8 +206,8 @@ test.describe('Quickbase prefill', () => {
 test.describe('updates from Quickbase on a second click', () => {
 
   test('a changed value is offered, not applied silently', async ({ page }) => {
-    await open(page, PAYLOAD);
-    await open(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999' });
+    await openPrefilled(page, PAYLOAD);
+    await openPrefilled(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999' });
 
     const bar = page.locator('#prefillbar');
     await expect(bar).toContainText('1 value that differs');
@@ -228,8 +219,8 @@ test.describe('updates from Quickbase on a second click', () => {
   }, );
 
   test('applying writes the new values and keeps one report', async ({ page }) => {
-    await open(page, PAYLOAD);
-    await open(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999', cc: 'Maitland City Council' });
+    await openPrefilled(page, PAYLOAD);
+    await openPrefilled(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999', cc: 'Maitland City Council' });
     await expect(page.locator('#prefillbar')).toContainText('2 values that differ');
     await page.click('#prefillapply');
     const d = await page.evaluate(() => ({ ld: report().d.lotDp, cc: report().d.council }));
@@ -239,32 +230,32 @@ test.describe('updates from Quickbase on a second click', () => {
   });
 
   test('declining keeps what the engineer has', async ({ page }) => {
-    await open(page, PAYLOAD);
-    await open(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999' });
+    await openPrefilled(page, PAYLOAD);
+    await openPrefilled(page, { ...PAYLOAD, ld: 'Lot 99 DP 9999999' });
     await page.click('#prefilldismiss');
     expect(await page.evaluate(() => report().d.lotDp)).toBe(PAYLOAD_LD);
     await expect(page.locator('#prefillbar')).toBeHidden();
   });
 
   test('an unchanged re-click offers nothing', async ({ page }) => {
-    await open(page, PAYLOAD);
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await expect(page.locator('#prefillbar')).toBeHidden();
   });
 
   test("a value the engineer typed is offered, not overwritten behind them", async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await page.evaluate(() => { report().d.suburb = 'Corrected By Engineer'; saveDb(); });
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await expect(page.locator('#prefillbar')).toContainText('Suburb');
     expect(await page.evaluate(() => report().d.suburb)).toBe('Corrected By Engineer');
   });
 
   // A blank in the link means "not set in Quickbase", not "clear this".
   test('a blank incoming value never wipes an existing one', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     const thin = { ...PAYLOAD }; thin.cc = '';
-    await open(page, thin);
+    await openPrefilled(page, thin);
     expect(await page.evaluate(() => report().d.council)).toBe(PAYLOAD.cc);
     await expect(page.locator('#prefillbar')).toBeHidden();
   });
@@ -279,7 +270,7 @@ test.describe('multi-jurisdiction registrations', () => {
   const REG = 'NSW & TAS BDC0000\nVIC PE0000000\nQLD RPEQ 00000';
 
   test('a multi-line registration survives the URL fragment intact', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ar: REG, aq: 'CPEng, NER, 1234567' });
+    await openPrefilled(page, { ...PAYLOAD, ar: REG, aq: 'CPEng, NER, 1234567' });
     const d = await page.evaluate(() => ({ ar: report().d.authorReg, aq: report().d.authorQual }));
     expect(d.ar).toBe(REG);
     // The comma-bearing qualification line must not be split or mangled.
@@ -287,14 +278,14 @@ test.describe('multi-jurisdiction registrations', () => {
   });
 
   test('Quickbase CRLF is normalised so no stray carriage return renders', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ar: 'NSW BDC0000\r\nVIC PE0000000' });
+    await openPrefilled(page, { ...PAYLOAD, ar: 'NSW BDC0000\r\nVIC PE0000000' });
     const ar = await page.evaluate(() => report().d.authorReg);
     expect(ar).toBe('NSW BDC0000\nVIC PE0000000');
     expect(ar).not.toContain('\r');
   });
 
   test('each registration prints on its own line in the report', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ar: REG });
+    await openPrefilled(page, { ...PAYLOAD, ar: REG });
     await page.click('#previewbtn');
     const html = await page.locator('#rpt').innerHTML();
     // Three jurisdictions, separated by line breaks rather than run together.
@@ -304,7 +295,7 @@ test.describe('multi-jurisdiction registrations', () => {
   });
 
   test('the ampersand in a registration is escaped, not injected', async ({ page }) => {
-    await open(page, { ...PAYLOAD, ar: 'NSW & TAS <script>alert(1)</script>' });
+    await openPrefilled(page, { ...PAYLOAD, ar: 'NSW & TAS <script>alert(1)</script>' });
     await page.click('#previewbtn');
     const html = await page.locator('#rpt').innerHTML();
     expect(html).toContain('&amp;');
@@ -315,7 +306,7 @@ test.describe('multi-jurisdiction registrations', () => {
 test.describe('Device handoff QR', () => {
 
   test('produces a scannable link that round-trips through the same map', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     const url = await page.evaluate(() => buildPrefillUrl(report()));
     expect(url).toContain('#qb=1');
 
@@ -329,7 +320,7 @@ test.describe('Device handoff QR', () => {
   });
 
   test('the QR dialog renders an actual code', async ({ page }) => {
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await gotoTab(page, 'Review & issue');
     await page.click('#qrthis');
     await expect(page.locator('#qrdlg')).toBeVisible();
@@ -344,7 +335,7 @@ test.describe('Device handoff QR', () => {
       const u = r.url();
       if (!u.startsWith('http://localhost') && !u.startsWith('data:')) external.push(u);
     });
-    await open(page, PAYLOAD);
+    await openPrefilled(page, PAYLOAD);
     await gotoTab(page, 'Review & issue');
     await page.click('#qrthis');
     await expect(page.locator('#qrbox svg')).toBeVisible();
