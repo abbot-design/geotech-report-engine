@@ -1,4 +1,4 @@
-// tests/prefill.spec.js
+// tests/integration/quickbase-prefill.spec.js
 //
 // Guards the Quickbase -> engine prefill contract documented in
 // docs/qb-contract.md.
@@ -9,7 +9,11 @@
 // drifts from the document, these tests are what catch it. Do not delete
 // them, and update them in the same commit as any map change.
 //
+// The Quickbase side itself (the table, the formula-URL button) is not
+// exercised here: there is no Quickbase sandbox. What is tested is
+// everything from the URL fragment onwards.
 const { test, expect } = require('@playwright/test');
+const { gotoTab } = require('../helpers');
 
 // The canonical payload. Mirrors the field map table in docs/qb-contract.md
 // and the Quickbase formula in the same document.
@@ -54,10 +58,6 @@ const hash = (obj) => '#' + new URLSearchParams(obj).toString();
 async function open(page, payload) {
   await page.goto('/index.html' + hash(payload));
   await page.waitForSelector('#view-editor:not([hidden])');
-}
-
-async function gotoTab(page, label) {
-  await page.click(`#tabrail button:text-is("${label}")`);
 }
 
 test.describe('Quickbase prefill', () => {

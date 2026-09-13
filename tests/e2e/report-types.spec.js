@@ -1,24 +1,14 @@
-// tests/engine.spec.js
+// tests/e2e/report-types.spec.js
 //
-// End-to-end tests for the Abbot geotech report engine, driven against a
-// real headless browser. This file is never referenced by index.html or
-// sw.js, so it is never downloaded by anyone using the live app — it only
-// runs when you explicitly invoke the Playwright test runner (see README).
-//
-// Run with:
-//   cd tests && npm install && npx playwright install chromium && npm test
-//
+// The core promise of the engine: each report type gets the content it
+// earned and nothing more. A Desktop Assessment must not carry footing
+// advice or cite standards it never applied; a Comprehensive report must
+// cite AS 3798 only when there is a fills recommendation to hang it on.
+// Every test here fills the form, opens the preview and asserts on the
+// generated report HTML, because the form and the document can drift apart
+// in ways that look fine on screen.
 const { test, expect } = require('@playwright/test');
-
-async function gotoTab(page, label) {
-  await page.click(`#tabrail button:text-is("${label}")`);
-}
-
-async function newReport(page, type) {
-  await page.goto('/index.html');
-  await page.click(`button[data-newtype="${type}"]`);
-  await page.waitForSelector('#view-editor:not([hidden])');
-}
+const { newReport, gotoTab, openPreview } = require('../helpers');
 
 async function fillCommon(page) {
   await gotoTab(page, 'Setup');
@@ -44,13 +34,6 @@ async function readinessGapLabels(page) {
   return page.$$eval('#reviewgaps ul li', els => els.map(e => e.textContent.trim()));
 }
 
-async function previewHtml(page) {
-  await gotoTab(page, 'Review & issue');
-  await page.click('#nextbtn'); // "Preview report →" on the last tab
-  await page.waitForSelector('#view-preview:not([hidden])');
-  return page.$eval('#rpt', el => el.innerHTML);
-}
-
 test.describe('Desktop Assessment — no footing advice, no over-claimed standards', () => {
   test('Foundations fieldset is hidden and not required', async ({ page }) => {
     await newReport(page, 'desktop');
@@ -73,7 +56,7 @@ test.describe('Desktop Assessment — no footing advice, no over-claimed standar
     await fillCommon(page);
     await gotoTab(page, 'Review & issue');
     await page.fill('#f_limitations', 'Test limitations statement.');
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
 
     expect(html).toContain('AS 1726'); // desk study is in scope even for a desktop assessment
     expect(html).not.toContain('AS 2870');
@@ -125,7 +108,7 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
 
     await gotoTab(page, 'Review & issue');
     await page.fill('#f_limitations', 'Test limitations statement.');
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
 
     expect(html).toContain('AS 1726');
     expect(html).toContain('AS 2870');
@@ -172,7 +155,7 @@ test.describe('Comprehensive with Fills recommendation + hazards commentary', ()
 
     await gotoTab(page, 'Review & issue');
     await page.fill('#f_limitations', 'Test limitations statement.');
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
 
     expect(html).toContain('AS 3798');
     expect(html).toContain('GeoGuide');
@@ -227,7 +210,7 @@ test.describe('Backward compatibility', () => {
     await gotoTab(page, 'Fieldwork');
     await expect(page.locator('input[data-bh="0"][data-f="waterDepth"]')).toHaveValue('');
 
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
     expect(html).toContain('E = encountered');
     expect(html).not.toContain('E = encountered @');
   });

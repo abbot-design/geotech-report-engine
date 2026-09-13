@@ -1,22 +1,14 @@
-// tests/ux-round.spec.js
+// tests/regression/ux.spec.js
 //
-// UI/UX regression tests. Same rules as engine.spec.js: dev-only, never
-// referenced by index.html or sw.js, so it is never downloaded by anyone
-// using the live app.
+// Regression guards from the UI/UX review of August 2026. Each describe
+// block locks in one finding from that review so it cannot quietly come
+// back: the offline shell must install, hints must not explain themselves,
+// deleting a row must be undoable, a new section must open at the top.
 //
-// Run with:
-//   cd tests && npm install && npx playwright install chromium && npm test
-//
+// If you change the interface copy, expect the hint-policy block to be the
+// one that complains. That is it doing its job.
 const { test, expect } = require('@playwright/test');
-
-async function newReport(page, type) {
-  await page.goto('/index.html');
-  await page.click(`button[data-newtype="${type}"]`);
-  await page.waitForSelector('#view-editor:not([hidden])');
-}
-async function gotoTab(page, label) {
-  await page.click(`#tabrail button:text-is("${label}")`);
-}
+const { newReport, gotoTab } = require('../helpers');
 
 /* ------------------------------------------------------------------ *
  * B0 — the offline shell actually installs                            *

@@ -1,31 +1,14 @@
-// tests/fonts.spec.js
+// tests/regression/fonts.spec.js
 //
-// The report is set in Carlito, embedded and served from the repo. Dev-only,
-// never referenced by index.html or sw.js.
-//
-// Why this matters enough to test: the report used to be set in `system-ui`,
-// which resolves to SF Pro on iOS/macOS, Segoe UI on Windows and Roboto on
-// Android. The issued PDF is produced by the engineer's own browser, so the
-// same report had different line breaks and a different page count depending
-// on who issued it. These tests guard the fix.
-//
-// Run with:
-//   cd tests && npm install && npx playwright install chromium && npm test
-//
+// Guards the switch to an embedded report font (Carlito, served from the
+// repo). The report used to be set in `system-ui`, which resolves to SF Pro
+// on iOS/macOS, Segoe UI on Windows and Roboto on Android. The issued PDF is
+// produced by the engineer's own browser, so the same report had different
+// line breaks and a different page count depending on who issued it.
 const { test, expect } = require('@playwright/test');
+const { newReport, openPreview } = require('../helpers');
 
 const FACES = ['regular', 'bold', 'italic', 'bolditalic'];
-
-async function newReport(page, type) {
-  await page.goto('/index.html');
-  await page.click(`button[data-newtype="${type}"]`);
-  await page.waitForSelector('#view-editor:not([hidden])');
-}
-async function openPreview(page) {
-  await page.click('#tabrail button:text-is("Review & issue")');
-  await page.click('#nextbtn');
-  await page.waitForSelector('#view-preview:not([hidden])');
-}
 
 test.describe('embedded report font', () => {
   test('every face exists and is in the offline shell', async ({ request }) => {
