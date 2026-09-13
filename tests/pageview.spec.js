@@ -89,25 +89,49 @@ test.describe('paginated preview', () => {
       .toBeGreaterThan(explicitBreaks + 1);
   });
 
-  test('page view never touches what gets printed', async ({ page }) => {
-    await newReport(page, 'classification');
-    await openPreview(page);
-    const before = await page.$eval('#rpt', el => el.children.length);
+  test('the paginated sheets are what prints, built on the way into any print',
+    async ({ page }) => {
+      // Chrome does not paint content outside the @page content box; it
+      // fragments it onto the next sheet. Running headers and footers fixed
+      // into the margins therefore printed in the wrong place or not at all,
+      // and bleeds were clipped. So the sheets print, with zero page margin.
+      await newReport(page, 'classification');
+      await openPreview(page);
 
-    await page.click('#pageview');
-    await page.waitForSelector('.rptpage');
+      // continuous view, the harder case: the sheets do not exist yet
+      const before = await page.evaluate(() => document.querySelectorAll('.rptpage').length);
+      expect(before).toBe(0);
 
-    const after = await page.$eval('#rpt', el => el.children.length);
-    expect(after, '#rpt is what Print / Save as PDF renders').toBe(before);
-    expect(after).toBeGreaterThan(0);
+      // what the browser fires before the print dialog
+      await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+      await page.waitForSelector('.rptpage');
+      const built = await page.evaluate(() => ({
+        sheets: document.querySelectorAll('.rptpage').length,
+        eachHasHeaderOrIsCover: [...document.querySelectorAll('.rptpage')]
+          .every(p => p.querySelector('.rpthead') || p.classList.contains('coverpage')),
+        eachHasFooter: [...document.querySelectorAll('.rptpage')].every(p => p.querySelector('.rptfoot'))
+      }));
+      expect(built.sheets).toBeGreaterThan(1);
+      expect(built.eachHasHeaderOrIsCover).toBe(true);
+      expect(built.eachHasFooter).toBe(true);
 
-    // and the print stylesheet hides the paginated copy
-    const hidden = await page.evaluate(() => {
-      const css = [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n');
-      return /@media print[\s\S]*?#rptpages\s*\{\s*display:\s*none/.test(css);
+      const css = await page.evaluate(() =>
+        [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n'));
+      const print = css.match(/@media print[\s\S]*$/)[0];
+      // Chrome serialises !important declarations last, so match anywhere in the rule.
+      expect(print, 'the continuous render is hidden in print').toMatch(/#rpt\s*\{[^}]*display:\s*none/);
+      expect(print, 'the sheets are shown').toMatch(/#rptpages\s*\{[^}]*display:\s*block/);
+      expect(print, 'zero page margin: each sheet is the whole page').toMatch(/@page\s*\{[^}]*margin:\s*0/);
+
+      // and the view goes back to what it was
+      await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+      const after = await page.evaluate(() => ({
+        sheets: document.querySelectorAll('.rptpage').length,
+        printing: document.body.classList.contains('printing')
+      }));
+      expect(after.sheets, 'continuous view restored').toBe(0);
+      expect(after.printing).toBe(false);
     });
-    expect(hidden, 'otherwise the PDF would contain both renderings').toBe(true);
-  });
 
   test('the front matter pages and references each get a page of their own',
     async ({ page }) => {
@@ -189,21 +213,22 @@ test.describe('paginated preview', () => {
       .not.toContain('Palmer Street');
   });
 
-  test('the preview page height matches the printed page box', async ({ page }) => {
-    // If these drift, the preview paginates against a page size the PDF does
-    // not use and every break after the first is wrong.
+  test('each sheet is exactly A4', async ({ page }) => {
+    // The sheet is the printed page, with @page margin 0, so its box must be
+    // 210 by 297mm to the millimetre or every sheet after the first drifts.
     await newReport(page, 'classification');
     await openPreview(page);
     await page.click('#pageview');
     await page.waitForSelector('.rptpage');
 
     const geom = await page.evaluate(() => {
-      const css = [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n');
-      const at = css.match(/@page\s*\{[^}]*margin:\s*([\d.]+)mm\s+([\d.]+)mm\s+([\d.]+)mm/);
-      const bodyPx = document.querySelector('.rptpagebody').clientHeight;
-      return { top: +at[1], bottom: +at[3], bodyMm: Math.round(bodyPx / (96 / 25.4)) };
+      const mm = px => Math.round(px / (96 / 25.4));
+      const p = [...document.querySelectorAll('.rptpage')].find(x => !x.classList.contains('grow'));
+      const r = p.getBoundingClientRect();
+      return { w: mm(r.width), h: mm(r.height) };
     });
-    expect(geom.bodyMm).toBe(297 - geom.top - geom.bottom);
+    expect(geom.w).toBe(210);
+    expect(geom.h).toBe(297);
   });
 
   // Typography targets taken from the report this one is benchmarked against

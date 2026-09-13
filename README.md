@@ -34,11 +34,18 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
   requirement is met and the report is formally issued with a named reviewer.
 - **PDF via the browser print engine** (File → Print → Save as PDF) — works on iOS, Android,
   Windows, macOS and Linux with no dependencies; A4 print stylesheet included.
-- **Paginated preview**: a *Page view* toggle lays the report into A4 sheets so the engineer can see
-  where breaks fall before issuing, with a running footer and page numbers. It mirrors the rules in
-  the print stylesheet but is a **simulation** — a browser does not expose its print pagination to
-  the DOM, and the finished PDF is still produced by the engineer's own browser. Print always
-  renders `#rpt`, never the paginated copy, so the issued document cannot be affected by it.
+- **Paginated preview, and it is what prints**: a *Page view* toggle lays the report into A4 sheets
+  with a running header and footer on each. **Those sheets are the print source.** `@page` has zero
+  margin and each `.rptpage` is the whole sheet, so the header, footer, draft stamp and bleeds are
+  ordinary positioned children of the page laid out by the same code the preview uses — the preview
+  is not an approximation of the PDF, it *is* the PDF. The sheets are built on `beforeprint`, so
+  the button, Cmd+P and the browser menu all print the same thing whichever view is showing.
+
+  Why not print the continuous `#rpt` with running elements fixed into the page margins, as this
+  once did: Chrome does not paint content outside the `@page` content box, it **fragments it onto
+  the next sheet**. A footer fixed 14 mm below the box printed at the top of the following page, a
+  header fixed above it had no page to land on and vanished, and every bleed was clipped at the
+  margin. Verified against a real Chromium PDF (`tests/` can produce one through Playwright).
 - **Appendix D information sheets**: third-party guidance documents (currently the CSIRO
   *Foundation Maintenance and Footing Performance* guide) are stored in `info-sheets/` and appended
   to the report, ticked on by default and unticked per report where they don't apply, e.g. the
@@ -138,8 +145,9 @@ per report type versioned in a table.
 document server-side (Appendix D sheets already avoid this by being rasterised at commit time, but
 engineer-uploaded attachments still can't be merged by the browser); vendor pdf.js so PDF
 attachments can render as embedded pages offline; server-side PDF render (headless Chromium via a free-tier worker)
-for pixel-identical letterhead, page headers/footers with job number on every page, and archival
-PDF/A output.
+for archival PDF/A output and to remove the last dependence on the engineer's browser. Per-page
+headers and footers no longer need it: they are laid out by the paginator and print as part of each
+sheet.
 **Phase 4 — intake integration:** ~~quote/CRM prefill into `report.source`~~ **done — see
 `docs/qb-contract.md`**; still to come: write-back of the issued PDF into Quickbase (needs a
 serverless hop, as `api.quickbase.com` sends no CORS headers to other origins), client portal
@@ -185,7 +193,8 @@ delivery links, and automatic hold-point booking reminders.
 - **iOS clears `localStorage` after 7 days without opening the app** (WebKit policy; home-screen
   PWAs are no longer exempt). An in-progress report left for a week can be lost. Until Phase 2,
   export a .json backup as soon as a report has real data.
-- Print headers/footers per page depend on the browser (Phase 3 fixes).
+- A physical printer that cannot print to the paper edge will clip the bleeds; the saved PDF is
+  edge to edge.
 - No authentication — do not store sensitive client data on shared devices.
 - The app structures standards *inputs* but never computes AS 2870/AS 4055 outcomes: engineering
   judgement is the product.

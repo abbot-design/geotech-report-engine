@@ -401,6 +401,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    shown instead of the continuous #rpt. Print always prints #rpt, so nothing
    here can reach the issued document. */
 #rptpages{display:none}
+/* Set for the duration of a print so the sheets can be laid out and measured
+   even when the engineer is in the continuous view. */
+body.printing #rptpages{display:block}
 .pageview #rpt{display:none}
 .pageview #rptpages{display:block;background:var(--paper);padding:1.4rem 1rem 2.4rem;overflow-x:auto}
 /* The running footer and the draft stamp are appended to the page, not to the
@@ -444,40 +447,35 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   header.app,nav.tabs,.stepnav,.previewbar,.no-print{display:none !important}
   main{max-width:none;padding:0;margin:0}
   #preview{border:0;border-radius:0}
-  .rpt{padding:0}
-  .rpt h2,.rpt h3,.rpt h4{break-after:avoid}
-  .rpt table,.rpt .rowitem,.rpt figure,.rpt .classbox,.rpt .keep{break-inside:avoid}
-  .rpt-cover{break-after:page}
-  .pagebreak{break-before:page}
-  .breakafter{break-after:page}
-  /* The paginated view is a screen affordance only. Printing always uses the
-     continuous #rpt, so the issued PDF is byte-identical whichever view the
-     engineer happened to be looking at. */
-  #rptpages{display:none !important}
-  .pageview #rpt{display:block !important}
-  /* In print the side margin comes from @page, not from .rpt padding. */
-  .rpt{--bleed:25mm}
-  /* A running footer on every page. Browsers do not implement the CSS Paged
-     Media @bottom-center box, so the only mechanism available is a fixed
-     element, which the print engine repeats per page. It is drawn inside the
-     enlarged bottom page margin: at bottom:0 it would sit in the content area
-     and the last line of each page would run underneath it.
 
-     Chrome, Edge and Firefox repeat fixed elements reliably; Safari, and iOS
-     Safari in particular, are less consistent. A footer guaranteed on every
-     page is what the Phase 3 server-side render is for. */
-  .rpt .rptfoot{position:fixed;left:-25mm;right:-25mm;bottom:-14mm;margin:0;background:#fff;
-    padding-left:25mm;padding-right:25mm}
-  /* Same mechanism as the footer, and the same caveat: a fixed element is the
-     only way to repeat a header per page, and Safari is the least reliable
-     about it. top:-12mm puts it 6mm below the paper edge, inside the 18mm
-     top margin, so it cannot collide with the content area. */
-  .rpt .rpthead{position:fixed;left:-25mm;right:-25mm;top:-13mm;margin:0;background:#fff;
-    padding-left:25mm;padding-right:25mm}
-  /* 25mm sides give a 160mm measure, the same as the reports this is
-     benchmarked against. At 16mm the text ran close enough to the paper edge
-     to read as a printed web page rather than a report. */
-  @page{margin:18mm 25mm 24mm;size:A4}
+  /* THE PAGINATED SHEETS ARE WHAT PRINTS.
+
+     Chrome does not paint content that sits outside the @page content box:
+     it fragments it onto the next sheet. A running footer fixed 14mm below
+     the content box therefore printed at the top of the following page, a
+     header fixed above it had no page to land on and vanished, and every
+     bleed was clipped at the margin. Positioning into the page margin is not
+     available in a browser.
+
+     So the page margin is zero and each .rptpage is the whole sheet. The
+     header, footer, draft stamp and bleeds are ordinary positioned children
+     of the sheet, laid out by the same code the preview uses, which means the
+     preview is no longer an approximation of the PDF: it is the PDF. */
+  @page{size:A4;margin:0}
+  #rpt{display:none !important}
+  #rptpages{display:block !important;padding:0;background:#fff;overflow:visible}
+  .rptpage{width:210mm;height:297mm;margin:0;box-shadow:none;overflow:hidden;
+    break-after:page;page-break-after:always}
+  .rptpage:last-child{break-after:auto;page-break-after:auto}
+  /* A page holding one block too tall for a sheet is allowed to run on, and
+     Chrome fragments it across sheets; better than clipping it. */
+  .rptpage.grow{height:auto;overflow:visible}
+  .rptpageno,.pagenote{display:none !important}
+  /* The sheets are already broken where they should be. The break hints the
+     continuous view carries would make Chrome insert breaks inside a sheet. */
+  .rptpage .pagebreak{break-before:auto}
+  .rptpage .breakafter,.rptpage .rpt-cover{break-after:auto}
+  .rptpage *{break-inside:auto}
 }
 @media (max-width:560px){
   header.app .markrest{display:none}
@@ -2353,7 +2351,7 @@ function renderPages(){
     p.append(n);
   });
   host.insertAdjacentHTML("afterbegin",
-    `<p class="pagenote">${pages.length} page(s), approximate. Your browser decides the final breaks when you save the PDF.</p>`);
+    `<p class="pagenote">${pages.length} page(s). This is what prints.</p>`);
 
   /* An image that has not loaded contributes no height, which packs the pages
      that follow it too tightly. Appendix D is mostly full-page images, so on a
@@ -2366,6 +2364,21 @@ function renderPages(){
       .then(() => { renderPages.settling = false; if(pageViewOn()) renderPages(); });
   }
 }
+
+/* Whatever the engineer is looking at, what prints is the paginated sheets,
+   so they are built on the way into every print: the button, Cmd+P, or the
+   browser menu all fire beforeprint first. A print started from the editor
+   shows the preview, since the report is what is being printed. */
+window.addEventListener("beforeprint", () => {
+  if(!report()) return;
+  if($("view-preview").hidden){ buildReport(); show("preview"); }
+  document.body.classList.add("printing");
+  renderPages();
+});
+window.addEventListener("afterprint", () => {
+  document.body.classList.remove("printing");
+  applyPreviewMode();                       /* back to the view that was chosen */
+});
 
 function applyPreviewMode(){
   const on = pageViewOn();
