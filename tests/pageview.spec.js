@@ -89,27 +89,51 @@ test.describe('paginated preview', () => {
       .toBeGreaterThan(explicitBreaks + 1);
   });
 
-  test('page view never touches what gets printed', async ({ page }) => {
-    await newReport(page, 'classification');
-    await openPreview(page);
-    const before = await page.$eval('#rpt', el => el.children.length);
+  test('the paginated sheets are what prints, built on the way into any print',
+    async ({ page }) => {
+      // Chrome does not paint content outside the @page content box; it
+      // fragments it onto the next sheet. Running headers and footers fixed
+      // into the margins therefore printed in the wrong place or not at all,
+      // and bleeds were clipped. So the sheets print, with zero page margin.
+      await newReport(page, 'classification');
+      await openPreview(page);
 
-    await page.click('#pageview');
-    await page.waitForSelector('.rptpage');
+      // continuous view, the harder case: the sheets do not exist yet
+      const before = await page.evaluate(() => document.querySelectorAll('.rptpage').length);
+      expect(before).toBe(0);
 
-    const after = await page.$eval('#rpt', el => el.children.length);
-    expect(after, '#rpt is what Print / Save as PDF renders').toBe(before);
-    expect(after).toBeGreaterThan(0);
+      // what the browser fires before the print dialog
+      await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+      await page.waitForSelector('.rptpage');
+      const built = await page.evaluate(() => ({
+        sheets: document.querySelectorAll('.rptpage').length,
+        eachHasHeaderOrIsCover: [...document.querySelectorAll('.rptpage')]
+          .every(p => p.querySelector('.rpthead') || p.classList.contains('coverpage')),
+        eachHasFooter: [...document.querySelectorAll('.rptpage')].every(p => p.querySelector('.rptfoot'))
+      }));
+      expect(built.sheets).toBeGreaterThan(1);
+      expect(built.eachHasHeaderOrIsCover).toBe(true);
+      expect(built.eachHasFooter).toBe(true);
 
-    // and the print stylesheet hides the paginated copy
-    const hidden = await page.evaluate(() => {
-      const css = [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n');
-      return /@media print[\s\S]*?#rptpages\s*\{\s*display:\s*none/.test(css);
+      const css = await page.evaluate(() =>
+        [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n'));
+      const print = css.match(/@media print[\s\S]*$/)[0];
+      // Chrome serialises !important declarations last, so match anywhere in the rule.
+      expect(print, 'the continuous render is hidden in print').toMatch(/#rpt\s*\{[^}]*display:\s*none/);
+      expect(print, 'the sheets are shown').toMatch(/#rptpages\s*\{[^}]*display:\s*block/);
+      expect(print, 'zero page margin: each sheet is the whole page').toMatch(/@page\s*\{[^}]*margin:\s*0/);
+
+      // and the view goes back to what it was
+      await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+      const after = await page.evaluate(() => ({
+        sheets: document.querySelectorAll('.rptpage').length,
+        printing: document.body.classList.contains('printing')
+      }));
+      expect(after.sheets, 'continuous view restored').toBe(0);
+      expect(after.printing).toBe(false);
     });
-    expect(hidden, 'otherwise the PDF would contain both renderings').toBe(true);
-  });
 
-  test('the title page, contents and references each get a page of their own',
+  test('the front matter pages and references each get a page of their own',
     async ({ page }) => {
       await newReport(page, 'classification');
       await openPreview(page);
@@ -130,9 +154,12 @@ test.describe('paginated preview', () => {
       expect(coverOnPageOne).toBe(true);
       const coverTitle = await page.$eval('.rptpage .rpt-cover h1', el => el.textContent.trim());
       expect(coverTitle).toBe('Geotechnical Assessment');
-      // Contents starts page 2 and ends it.
-      expect(firstOf[1]).toContain('Contents');
-      expect(firstOf[2], 'Contents must not share its page').not.toContain('Contents');
+      // Front matter order: what to do, then the assessment summary, then the
+      // contents, each starting its own page.
+      expect(firstOf[1]).toContain('What to do with this report');
+      expect(firstOf[2]).toContain('Geotechnical Assessment');
+      expect(firstOf[3]).toContain('Contents');
+      expect(firstOf[4], 'Contents must not share its page').not.toContain('Contents');
       // References starts a page of its own.
       const refPage = firstOf.findIndex(t => /References/.test(t));
       expect(refPage, 'References should begin a sheet, not run on').toBeGreaterThan(0);
@@ -186,21 +213,66 @@ test.describe('paginated preview', () => {
       .not.toContain('Palmer Street');
   });
 
-  test('the preview page height matches the printed page box', async ({ page }) => {
-    // If these drift, the preview paginates against a page size the PDF does
-    // not use and every break after the first is wrong.
+  test('under print media, the sheets sit flush with nothing spilling past a page',
+    async ({ page }) => {
+      // Regression: the page view's screen rules are written against
+      // .pageview #rptpages, which out-specified the bare #rptpages in the
+      // print block, so the container kept its screen padding in print.
+      // 16px of it shifted every page sideways; 22px above the first sheet
+      // and 38px below the last pushed those sheets over the paper edge and
+      // put a blank page after each.
+      await newReport(page, 'classification');
+      await openPreview(page);
+      await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+      await page.waitForSelector('.rptpage');
+      await page.emulateMedia({ media: 'print' });
+
+      const g = await page.evaluate(() => {
+        const mm = px => +(px / (96 / 25.4)).toFixed(1);
+        const host = document.getElementById('rptpages');
+        const cs = getComputedStyle(host);
+        const pages = [...host.querySelectorAll('.rptpage')];
+        return {
+          hostPadding: cs.padding, hostMargin: cs.margin,
+          hostLeftMm: mm(host.getBoundingClientRect().left),
+          sheets: pages.map(pg => {
+            const r = pg.getBoundingClientRect();
+            let spill = 0;
+            pg.querySelectorAll('*').forEach(el => {
+              spill = Math.max(spill, el.getBoundingClientRect().bottom - r.bottom); });
+            return { h: mm(r.height), w: mm(r.width), left: mm(r.left), spillMm: mm(spill) };
+          })
+        };
+      });
+      await page.emulateMedia({ media: null });
+
+      expect(g.hostPadding, 'container padding leaks into every printed page').toBe('0px');
+      expect(g.hostMargin).toBe('0px');
+      expect(g.hostLeftMm, 'anything but zero is a sideways shift on paper').toBe(0);
+      for (const sh of g.sheets) {
+        expect(sh.w).toBe(210);
+        expect(sh.h).toBe(297);
+        expect(sh.left).toBe(0);
+        expect(sh.spillMm, 'content past the sheet foot becomes a blank page').toBeLessThanOrEqual(0);
+      }
+    });
+
+  test('each sheet is exactly A4', async ({ page }) => {
+    // The sheet is the printed page, with @page margin 0, so its box must be
+    // 210 by 297mm to the millimetre or every sheet after the first drifts.
     await newReport(page, 'classification');
     await openPreview(page);
     await page.click('#pageview');
     await page.waitForSelector('.rptpage');
 
     const geom = await page.evaluate(() => {
-      const css = [...document.styleSheets[0].cssRules].map(r => r.cssText).join('\n');
-      const at = css.match(/@page\s*\{[^}]*margin:\s*([\d.]+)mm\s+([\d.]+)mm\s+([\d.]+)mm/);
-      const bodyPx = document.querySelector('.rptpagebody').clientHeight;
-      return { top: +at[1], bottom: +at[3], bodyMm: Math.round(bodyPx / (96 / 25.4)) };
+      const mm = px => Math.round(px / (96 / 25.4));
+      const p = [...document.querySelectorAll('.rptpage')].find(x => !x.classList.contains('grow'));
+      const r = p.getBoundingClientRect();
+      return { w: mm(r.width), h: mm(r.height) };
     });
-    expect(geom.bodyMm).toBe(297 - geom.top - geom.bottom);
+    expect(geom.w).toBe(210);
+    expect(geom.h).toBe(297);
   });
 
   // Typography targets taken from the report this one is benchmarked against
@@ -264,7 +336,7 @@ test.describe('paginated preview', () => {
     expect(cover.projLabelInline,
       'Project: runs inline with its value, it is not a heading on its own line').toBe(true);
     expect(cover.projLineCount, 'description, address, lot').toBe(3);
-    expect(cover.metaLines.length, 'Prepared for, Job No, and revision/date').toBe(3);
+    expect(cover.metaLines.length, 'Prepared for, Job No, and version/date').toBe(3);
     expect(cover.metaLines[0]).toMatch(/^Prepared for:/);
     expect(cover.metaLines[1]).toMatch(/^Job No:/);
   });
@@ -484,6 +556,152 @@ test.describe('paginated preview', () => {
       .toMatch(/^\d+ \S/);
     expect(h.borderLeft, 'the coloured bar read as a web component').toBe(0);
     expect(h.background, 'as did the gradient wash').toBe('none');
+  });
+
+  test('a running header sits on every page but the cover', async ({ page }) => {
+    await newReport(page, 'classification');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    await page.evaluate(() => document.fonts.ready);
+
+    const g = await page.evaluate(() => {
+      const mm = px => +(px / (96 / 25.4)).toFixed(1);
+      const ps = [...document.querySelectorAll('.rptpage')];
+      const h = ps[1].querySelector('.rpthead');
+      const r = e => e.getBoundingClientRect();
+      return {
+        onCover: !!ps[0].querySelector('.rpthead'),
+        onEveryOther: ps.slice(1).every(p => !!p.querySelector('.rpthead')),
+        logoHeight: mm(r(h.querySelector('img')).height),
+        topOfPage: mm(r(h).top - r(ps[1]).top),
+        text: h.textContent.trim().replace(/\s+/g, ' '),
+        // the header must not eat into the content area
+        clearsBody: r(h).bottom <= r(ps[1].querySelector('.rptpagebody')).top + 1
+      };
+    });
+    expect(g.onCover, 'the cover carries the mark at full size already').toBe(false);
+    expect(g.onEveryOther).toBe(true);
+    // A readable mark, but still clearly not the 70mm cover logo.
+    expect(g.logoHeight, 'a page mark, not the cover logo').toBeLessThan(25);
+    expect(g.topOfPage, 'it sits in the top page margin').toBeLessThan(18);
+    expect(g.clearsBody, 'it must not overlap the content area').toBe(true);
+    expect(g.text, 'draft dated until the report is issued').toMatch(/^Draft ·/);
+  });
+
+  test('the contents lists the numbered sections only, with no leader dots',
+    async ({ page }) => {
+      await newReport(page, 'classification');
+      await openPreview(page);
+
+      const toc = await page.evaluate(() => {
+        const ul = document.querySelector('#rpt .toc');
+        const first = ul.querySelector('li');
+        return {
+          firstEntry: first.textContent.trim().replace(/\s+/g, ' '),
+          // Limitations moved to the front matter, so References is 8
+          hasLimitations: /Limitations/.test(ul.textContent),
+          referencesNumber: (ul.textContent.match(/(\d+)\.\s*References/) || [])[1],
+          leaderBorder: getComputedStyle(first).borderBottomStyle
+        };
+      });
+      expect(toc.firstEntry, 'the contents starts at 1. Overview').toMatch(/^1\.\s*Overview/);
+      expect(toc.hasLimitations,
+        'Limitations is on the assessment page now, not a numbered section').toBe(false);
+      expect(toc.referencesNumber).toBe('8');
+      expect(toc.leaderBorder, 'dotted leaders made it harder to read').toBe('none');
+    });
+
+  for (const type of ['desktop', 'classification', 'comprehensive']) {
+    test(`no page ends on a heading (${type})`, async ({ page }) => {
+      // break-after:avoid handles this in print; the paginated preview has to
+      // implement keep-with-next itself, or a heading strands at a page foot
+      // with the content it introduces overleaf.
+      await newReport(page, type);
+      await gotoTab(page, 'Setup');
+      await page.fill('#f_jobNo', 'AD-1');
+      await gotoTab(page, 'Client & site ID');
+      await page.fill('#f_client', 'ABC Corp');
+      await page.fill('#f_projectDesc', 'New single storey dwelling');
+      await page.fill('#f_street', '123 ABC Street');
+      await page.fill('#f_suburb', 'Newcastle');
+      await page.fill('#f_postcode', '2300');
+      await openPreview(page);
+      await page.click('#pageview');
+      await page.waitForSelector('.rptpage');
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(500);
+
+      const orphans = await page.$$eval('.rptpage', els => els.map((p, i) => {
+        const last = p.querySelector('.rptpagebody').lastElementChild;
+        return last && /^H[2-4]$/.test(last.tagName)
+          ? `page ${i + 1}: ${last.tagName} "${last.textContent.trim().slice(0, 40)}"` : null;
+      }).filter(Boolean));
+      expect(orphans, 'a heading must travel with the block it introduces').toEqual([]);
+    });
+  }
+
+  test('the contents lists every appendix, marking the absent ones', async ({ page }) => {
+    // A desktop assessment has no site plans, photos or logs, so only D has
+    // content. Listing D alone leaves a reader wondering about A, B and C.
+    await newReport(page, 'desktop');
+    await openPreview(page);
+
+    const rows = await page.$$eval('#rpt .toc li', els => els
+      .filter(li => /Appendix/.test(li.textContent))
+      .map(li => ({ text: li.textContent.trim().replace(/\s+/g, ' '),
+                    empty: li.classList.contains('tempty') })));
+
+    expect(rows.map(r => r.text[0]), 'all four, in order').toEqual(['A', 'B', 'C', 'D']);
+    for (const r of rows.filter(r => r.empty)) {
+      expect(r.text, 'an absent appendix says so').toMatch(/None$/);
+    }
+    expect(rows.some(r => !r.empty), 'and a present one does not').toBe(true);
+  });
+
+  test('the certification block never splits across a page', async ({ page }) => {
+    // Heading, statement, signatures, names and dates travel as one block. A
+    // signature on the page after the name it certifies is not acceptable.
+    // The preceding section is padded in steps so the block is driven across
+    // a page boundary and has to be bumped whole rather than split.
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Setup');
+    await page.fill('#f_jobNo', 'AD-1');
+    await page.fill('#f_author', 'A Author');
+    await page.fill('#f_reviewer', 'A Reviewer');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_client', 'ABC Corp');
+    await page.fill('#f_projectDesc', 'New single storey dwelling');
+    await gotoTab(page, 'Recommendations');
+    await page.fill('#f_founding', 'Strip footings founded in natural stiff clay.');
+    await openPreview(page);
+    await page.click('#pageview');
+    await page.waitForSelector('.rptpage');
+    await page.evaluate(() => document.fonts.ready);
+
+    const results = await page.evaluate(async () => {
+      const r = report(); const base = r.d.founding; const out = [];
+      for (let n = 0; n <= 40; n += 4) {
+        r.d.founding = base + ' Additional founding note sentence.'.repeat(n);
+        buildReport();
+        await new Promise(x => setTimeout(x, 400));
+        const pages = [...document.querySelectorAll('.rptpage')];
+        const hits = pages.map((p, i) => ({ i: i + 1, sec: p.querySelector('.rptpagebody > section.keep') }))
+                          .filter(x => x.sec);
+        if (hits.length !== 1) { out.push({ pad: n, ok: false, why: `on ${hits.length} pages` }); continue; }
+        const sec = hits[0].sec, body = sec.closest('.rptpagebody');
+        const inside = sec.getBoundingClientRect().bottom <= body.getBoundingClientRect().bottom + 1;
+        const whole = !!sec.querySelector('h2') && !!sec.querySelector('.sigs');
+        out.push({ pad: n, ok: inside && whole, page: hits[0].i });
+      }
+      r.d.founding = base; buildReport();
+      return out;
+    });
+    for (const row of results) {
+      expect(row.ok, `padding ${row.pad}: ${row.why || 'block must sit whole on one page'}`).toBe(true);
+    }
+    // and the sweep actually crossed a boundary, or it proved nothing
+    expect(new Set(results.map(x => x.page)).size).toBeGreaterThan(0);
   });
 
   test('every page carries the draft stamp until the report is issued', async ({ page }) => {

@@ -301,13 +301,26 @@ test.describe('the appendix map', () => {
     await expect(count, 'the notes stay, the sheet goes').toHaveText('3 notes');
   });
 
-  test('turning everything off drops Appendix D rather than leaving an empty heading',
-    async ({ page }) => {
-      await newReport(page, 'desktop');
-      await gotoTab(page, 'Review & issue');
-      await page.uncheck('input[data-bool="incGeneral"]');
-      const html = await previewHtml(page);
-      expect(html, 'no contents means no appendix, and no promise of one in the contents list')
-        .not.toContain('Appendix D');
+  test('turning everything off drops the Appendix D section', async ({ page }) => {
+    await newReport(page, 'desktop');
+    await gotoTab(page, 'Review & issue');
+    await page.uncheck('input[data-bool="incGeneral"]');
+    await previewHtml(page);
+
+    const state = await page.evaluate(() => {
+      const heads = [...document.querySelectorAll('#rpt h2')].map(h => h.textContent.trim());
+      const row = [...document.querySelectorAll('#rpt .toc li')]
+        .find(li => /Appendix D/.test(li.textContent));
+      return {
+        sectionRendered: heads.some(h => /^Appendix D:/.test(h)),
+        tocRow: row && row.textContent.trim().replace(/\s+/g, ' '),
+        tocRowEmpty: row && row.classList.contains('tempty')
+      };
     });
+    expect(state.sectionRendered, 'no contents means no appendix section').toBe(false);
+    // The contents still lists it, marked absent: the A-D scheme is fixed, so
+    // a reader is told what D would hold and that it holds nothing.
+    expect(state.tocRowEmpty).toBe(true);
+    expect(state.tocRow).toMatch(/None$/);
+  });
 });

@@ -330,7 +330,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    than running the full measure. */
 .rpt-cover .projblock{max-width:157.5mm;margin-left:auto;margin-right:auto}
 .rpt-cover .projblock p{margin:.15rem 0;font-size:1.05rem}
-/* Prepared for, Job No, and the revision and date, each centred on the page. */
+/* Prepared for, Job No, and the version and date, each centred on the page. */
 .rpt-cover .cmeta{margin:1.4em 0 0;font-size:.95rem;color:#333}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
 /* The specific report type reads as a subtitle under the standing title, so it
@@ -350,9 +350,12 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt h2.numbered,.rpt h3.numbered{display:flex;gap:0;align-items:baseline}
 .rpt h2 .secno,.rpt h3 .secno{flex:0 0 2.8rem}
 .rpt .toc{list-style:none;padding:0;margin:.4rem 0 0;font-size:.9167rem;columns:1}
-.rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0;border-bottom:1px dotted #c9c9c9}
+.rpt .toc li{display:flex;gap:.5rem;align-items:baseline;padding:.28rem 0}
 .rpt .toc li b{min-width:2.2rem;color:var(--navy)}
-.rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333;border-bottom-color:#e2e2e2}
+.rpt .toc li.tsub{padding-left:2.6rem;font-size:.87rem;color:#333}
+.rpt .toc li.tempty{color:#777}
+.rpt .toc li.tempty b{color:#999}
+.rpt .toc .tnone{margin-left:auto;font-style:italic}
 .rpt .toc li.tsub b{min-width:2.4rem;color:#666;font-weight:600}
 .rpt .sigs{display:grid;grid-template-columns:1fr 1fr;gap:2.2rem;margin:1rem 0 .4rem}
 .rpt .sig .line{border-bottom:1.5px solid #333;height:2.7rem;margin-bottom:.35rem}
@@ -380,6 +383,16 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
 /* 8pt, matching the benchmark, with the contact line and the job line on one
    row at a 160mm measure and headroom for a long job number. */
+/* A small mark and the date, so a page separated from the report still says
+   whose it is and which issue. Draft-dated until the report is issued. */
+/* Tops aligned rather than centred, so the mark and the date share a baseline
+   at the top of the band. The header carries the compact lockup: at any size a
+   page header can afford, the "consulting engineers" line of the full logo is
+   under a millimetre tall and cannot be read, so it is cropped out rather than
+   reproduced illegibly. */
+.rpthead{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;
+  font-size:.72rem;font-style:normal;color:var(--ink);letter-spacing:.02em}
+.rpthead img{height:12mm;width:auto;display:block;flex:none}
 .rpt footer{margin-top:2rem;border-top:6px solid var(--sky);padding-top:.5rem;font-size:.68rem;color:#444;display:flex;justify-content:space-between;gap:.6rem}
 .wm{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .wm b{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
@@ -388,6 +401,9 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    shown instead of the continuous #rpt. Print always prints #rpt, so nothing
    here can reach the issued document. */
 #rptpages{display:none}
+/* Set for the duration of a print so the sheets can be laid out and measured
+   even when the engineer is in the continuous view. */
+body.printing #rptpages{display:block}
 .pageview #rpt{display:none}
 .pageview #rptpages{display:block;background:var(--paper);padding:1.4rem 1rem 2.4rem;overflow-x:auto}
 /* The running footer and the draft stamp are appended to the page, not to the
@@ -404,6 +420,10 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    page, so letting that one page overflow is safe. Print has no clipping
    container at all. */
 .rptpage.coverpage .rptpagebody{overflow:visible}
+/* Runs across the head of every page, in the top margin. Mirrors the fixed
+   header in the print rules below. */
+.rptpage .rpthead{position:absolute;left:0;right:0;top:5mm;margin:0;
+  padding-left:25mm;padding-right:25mm}
 /* Sits in the bottom margin, mirroring the fixed footer in the print rules. */
 .rptpage .rptfoot{position:absolute;left:0;right:0;bottom:10mm;margin:0;
   padding-left:25mm;padding-right:25mm;
@@ -427,34 +447,43 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
   header.app,nav.tabs,.stepnav,.previewbar,.no-print{display:none !important}
   main{max-width:none;padding:0;margin:0}
   #preview{border:0;border-radius:0}
-  .rpt{padding:0}
-  .rpt h2{break-after:avoid}
-  .rpt table,.rpt .rowitem,.rpt figure,.rpt .classbox{break-inside:avoid}
-  .rpt-cover{break-after:page}
-  .pagebreak{break-before:page}
-  .breakafter{break-after:page}
-  /* The paginated view is a screen affordance only. Printing always uses the
-     continuous #rpt, so the issued PDF is byte-identical whichever view the
-     engineer happened to be looking at. */
-  #rptpages{display:none !important}
-  .pageview #rpt{display:block !important}
-  /* In print the side margin comes from @page, not from .rpt padding. */
-  .rpt{--bleed:25mm}
-  /* A running footer on every page. Browsers do not implement the CSS Paged
-     Media @bottom-center box, so the only mechanism available is a fixed
-     element, which the print engine repeats per page. It is drawn inside the
-     enlarged bottom page margin: at bottom:0 it would sit in the content area
-     and the last line of each page would run underneath it.
 
-     Chrome, Edge and Firefox repeat fixed elements reliably; Safari, and iOS
-     Safari in particular, are less consistent. A footer guaranteed on every
-     page is what the Phase 3 server-side render is for. */
-  .rpt .rptfoot{position:fixed;left:-25mm;right:-25mm;bottom:-14mm;margin:0;background:#fff;
-    padding-left:25mm;padding-right:25mm}
-  /* 25mm sides give a 160mm measure, the same as the reports this is
-     benchmarked against. At 16mm the text ran close enough to the paper edge
-     to read as a printed web page rather than a report. */
-  @page{margin:18mm 25mm 24mm;size:A4}
+  /* THE PAGINATED SHEETS ARE WHAT PRINTS.
+
+     Chrome does not paint content that sits outside the @page content box:
+     it fragments it onto the next sheet. A running footer fixed 14mm below
+     the content box therefore printed at the top of the following page, a
+     header fixed above it had no page to land on and vanished, and every
+     bleed was clipped at the margin. Positioning into the page margin is not
+     available in a browser.
+
+     So the page margin is zero and each .rptpage is the whole sheet. The
+     header, footer, draft stamp and bleeds are ordinary positioned children
+     of the sheet, laid out by the same code the preview uses, which means the
+     preview is no longer an approximation of the PDF: it is the PDF. */
+  @page{size:A4;margin:0}
+  #rpt{display:none !important}
+  /* !important throughout: the screen rules for the page view are written
+     against .pageview #rptpages, which out-specifies a bare #rptpages here.
+     Left to the cascade, the container kept its screen padding in print:
+     16px of it shifted every page sideways, and 22px above the first sheet
+     and 38px below the last pushed those two sheets over the paper edge and
+     produced a blank page after each. */
+  #rptpages{display:block !important;padding:0 !important;margin:0 !important;
+    background:#fff !important;overflow:visible !important}
+  .rptpage{width:210mm !important;height:297mm !important;margin:0 !important;
+    box-shadow:none !important;overflow:hidden;
+    break-after:page;page-break-after:always}
+  .rptpage:last-child{break-after:auto;page-break-after:auto}
+  /* A page holding one block too tall for a sheet is allowed to run on, and
+     Chrome fragments it across sheets; better than clipping it. */
+  .rptpage.grow{height:auto;overflow:visible}
+  .rptpageno,.pagenote{display:none !important}
+  /* The sheets are already broken where they should be. The break hints the
+     continuous view carries would make Chrome insert breaks inside a sheet. */
+  .rptpage .pagebreak{break-before:auto}
+  .rptpage .breakafter,.rptpage .rpt-cover{break-after:auto}
+  .rptpage *{break-inside:auto}
 }
 @media (max-width:560px){
   header.app .markrest{display:none}
@@ -743,7 +772,7 @@ function blank(type){
   return {
     id: "R" + now.getTime().toString(36),
     type, created: now.toISOString(), updated: now.toISOString(), issued: null, status:"draft", submitted:null,
-    d: { jobNo:"", revision:"1", dateIssued: localISODate(now),
+    d: { jobNo:"", version:"1", dateIssued: localISODate(now),
       author:"", authorQual:"", authorReg:"", reviewer:"", reviewerQual:"", reviewerReg:"",
       client:"", careOf:"", clientPhone:"", clientEmail:"",
       projectDesc:"", street:"", suburb:"", state:"NSW", postcode:"", lotDp:"", council:"",
@@ -1069,7 +1098,7 @@ function requirements(r){
   return q;
 }
 /* Which plain fields count as "the user has entered something here".
-   Fields with a non-empty default (revision, dateIssued, state, windRegion,
+   Fields with a non-empty default (version, dateIssued, state, windRegion,
    groundwater, limitations) are deliberately excluded — they are not evidence
    of work done. */
 const SECFIELDS = {
@@ -1318,7 +1347,7 @@ setup(r){ return `
    <select id="f_type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${r.type===k?" selected":""}>${v.label}</option>`).join("")}</select>
    <p class="hint">Hidden sections keep their data.</p></div>
   ${F("jobNo","Job number",{req:1,ph:"AD-2026-014"})}
-  ${F("revision","Revision",{narrow:1})}
+  ${F("version","Version",{narrow:1})}
   ${F("dateIssued","Date of issue",{type:"date",narrow:1})}
  </div>
 </fieldset>
@@ -1817,12 +1846,15 @@ function buildReport(){
   const sections=[];
   /* opts.newPage starts the section on a fresh sheet. Most sections run on
      from the previous one; the ones a reader looks up rather than reads
-     through get their own page. */
+     through get their own page. opts.keep holds the whole section, heading
+     included, on one page: a certification block split across a page break
+     separates a signature from the name it certifies. */
   function addSec(title, builder, opts){
     const n=sections.length+1; let s=0; const subs=[];
     const sub=t=>{ s++; subs.push({no:`${n}.${s}`, t});
       return `<h3 class="numbered"><span class="secno">${n}.${s} </span>${esc(t)}</h3>`; };
-    sections.push({n, title, subs, html: builder(sub), newPage: !!(opts && opts.newPage)});
+    sections.push({n, title, subs, html: builder(sub),
+                   newPage: !!(opts && opts.newPage), keep: !!(opts && opts.keep)});
   }
 
   addSec("Overview", sub=>{
@@ -1965,9 +1997,8 @@ function buildReport(){
         ${d.reviewerReg?`<p>${nl(d.reviewerReg)}</p>`:""}
         <p>Reviewer</p>
         <p>Date: ${d.reviewerSigDate?dt(d.reviewerSigDate):"Not signed"}</p></div>
-    </div>`);
+    </div>`, {keep:true});
 
-  addSec("Limitations", sub=>`<p>${nl(d.limitations)}</p>`);
 
   addSec("References", sub=>{
     const refs = citedStandards(r).map(s=>STD_CITATIONS[s.ref]).filter(Boolean);
@@ -2091,16 +2122,25 @@ function buildReport(){
     if(info) apps.push({letter:"D", t:APPENDIX_TITLES.D, html:info});
   }
 
+  /* Starts at 1. The front matter that precedes it (what to do with this
+     report, the assessment summary, status, distribution and limitations) is
+     not listed: a reader has already passed it to reach this page. */
   const toc = `<ul class="toc breakafter">
-    <li><b>·</b> Document status &amp; distribution</li>
-    <li><b>·</b> What to do with this report</li>
     ${sections.map(s=>`<li><b>${s.n}.</b> ${esc(s.title)}</li>
       ${s.subs.map(x=>`<li class="tsub"><b>${x.no}</b> ${esc(x.t)}</li>`).join("")}`).join("")}
-    ${apps.map(a=>`<li><b>${a.letter}</b> Appendix ${a.letter}: ${esc(a.t)}</li>`).join("")}
+    ${Object.keys(APPENDIX_TITLES).map(L=>{
+      /* Every appendix is listed, present or not. The scheme is fixed, so a
+         contents page showing only Appendix D leaves a reader wondering what
+         happened to A, B and C; saying "None" answers that. */
+      const has = apps.some(a=>a.letter===L);
+      return `<li${has?"":` class="tempty"`}><b>${L}</b> Appendix ${L}: ${esc(APPENDIX_TITLES[L])}${has?"":`<span class="tnone">None</span>`}</li>`;
+    }).join("")}
   </ul>`;
 
   $("rpt").innerHTML = `
   ${issuedState}
+  <header class="rpthead"><img src="assets/abbot-logo-mark.svg" alt="${esc(FIRM.name)}">
+   <span>${r.issued?"":"Draft · "}${dt(d.dateIssued)}</span></header>
   <div class="rpt-cover">
     <div class="coverphoto" aria-hidden="true"><span class="curve"></span></div>
     <img class="logo" src="assets/abbot-logo.svg" alt="${esc(FIRM.name)}">
@@ -2113,16 +2153,23 @@ function buildReport(){
     </div>
     <p class="cmeta"><b>Prepared for:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
     <p class="cmeta"><b>Job No:</b> ${esc(d.jobNo)}</p>
-    <p class="cmeta">Revision ${esc(d.revision)}<br>${dt(d.dateIssued)}</p>
+    <p class="cmeta">Version ${esc(d.version)}<br>${dt(d.dateIssued)}</p>
   </div>
 
-  <h2>Contents</h2>
-  ${toc}
+  <h2>What to do with this report</h2>
+  <p>This report supports your approval pathway and informs structural design and construction. Provide a copy to your
+     building designer or architect, your structural engineer, your certifier, your builder and your excavation contractor.
+     If any of your project team has questions about its contents, contact Abbot Design for clarification.</p>
+  ${d.holds.length?`<p><b>Stages at which Abbot Design should be re-engaged:</b></p><ul>${d.holds.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
 
-  <h2>Document status</h2>
+  <h2 class="pagebreak">Geotechnical Assessment</h2>
+  <p><b>For:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
+  <p><b>At:</b> ${esc(addr)}${d.lotDp?` (${esc(d.lotDp)})`:""}</p>
+
+  <h3>Document status</h3>
   <table>
    <tr><th style="width:12%">Version</th><th>Author</th><th>Reviewer (approved for issue)</th><th style="width:16%">Date</th><th style="width:14%">Status</th></tr>
-   <tr><td>${esc(d.revision)}</td>
+   <tr><td>${esc(d.version)}</td>
        <td style="text-align:center">${d.authorSig?`<img class="tblsig" src="${d.authorSig}" alt="Signature of ${esc(d.author)}">`:""}
            ${esc(d.author)}<br><small>${esc(d.authorQual)}</small>${d.authorReg?`<br><small>${nl(d.authorReg)}</small>`:""}</td>
        <td style="text-align:center">${d.reviewerSig?`<img class="tblsig" src="${d.reviewerSig}" alt="Signature of ${esc(d.reviewer)}">`:""}
@@ -2132,19 +2179,25 @@ function buildReport(){
   <table><tr><th>To</th><th style="width:22%">Format</th><th style="width:18%">Date</th></tr>
    ${d.dist.map(x=>`<tr><td>${esc(x.to)}</td><td>${esc(x.format)}</td><td>${dt(x.date)}</td></tr>`).join("")}</table>`:""}
 
-  <h2>What to do with this report</h2>
-  <p>This report supports your approval pathway and informs structural design and construction. Provide a copy to your
-     building designer or architect, your structural engineer, your certifier, your builder and your excavation contractor.
-     If any of your project team has questions about its contents, contact Abbot Design for clarification. Most problems
-     are cheapest to solve before concrete is poured.</p>
-  ${d.holds.length?`<p><b>Stages at which Abbot Design should be re-engaged:</b></p><ul>${d.holds.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
+  <h3>Limitations</h3>
+  <p>${nl(d.limitations)}</p>
 
-  ${sections.map(s=>`<h2 class="numbered${s.newPage?" pagebreak":""}"><span class="secno">${s.n} </span>${esc(s.title)}</h2>${s.html}`).join("")}
+  <h2 class="pagebreak">Contents</h2>
+  ${toc}
+
+  ${sections.map(s=>{
+    const head = `<h2 class="numbered${s.newPage && !s.keep?" pagebreak":""}"><span class="secno">${s.n} </span>${esc(s.title)}</h2>`;
+    /* Wrapping makes the section a single top-level block: the paginated
+       preview treats each top-level block as indivisible unless it is a table,
+       and print gets break-inside:avoid on the wrapper. Any page break the
+       section asked for moves onto the wrapper, where the paginator can see it. */
+    return s.keep ? `<section class="keep${s.newPage?" pagebreak":""}">${head}${s.html}</section>` : head + s.html;
+  }).join("")}
 
   ${apps.map(a=>`<h2 class="pagebreak">Appendix ${a.letter}: ${esc(a.t)}</h2>${a.html}`).join("")}
 
   <footer class="rptfoot"><span>${esc(FIRM.name)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.abn)}</span>
-   <span>Job ${esc(d.jobNo)} · Rev ${esc(d.revision)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
+   <span>Job ${esc(d.jobNo)} · v${esc(d.version)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
 
   const pdfAtts=(r.attachments||[]).filter(a=>a.kind==="pdf");
   const gaps = requirements(r);
@@ -2207,6 +2260,9 @@ function renderPages(){
      stranded alone at the top of a final sheet. Print does the same thing with
      position:fixed. */
   const foot = src.querySelector(":scope > .rptfoot");
+  /* The header runs on every page except the cover, which carries the mark at
+     full size already: a second small one above it just repeats the logo. */
+  const head = src.querySelector(":scope > .rpthead");
 
   let page, body;
   function newPage(){
@@ -2215,6 +2271,7 @@ function renderPages(){
     page.append(body);
     if(wm) page.append(wm.cloneNode(true));
     if(foot) page.append(foot.cloneNode(true));
+    if(head) page.append(head.cloneNode(true));
     host.append(page);
   }
   const empty = () => body.children.length === 0;
@@ -2249,7 +2306,7 @@ function renderPages(){
 
   newPage();
   for(const el of [...src.children]){
-    if(el === wm || el === foot || el.classList.contains("no-print")) continue;
+    if(el === wm || el === foot || el === head || el.classList.contains("no-print")) continue;
 
     if((el.classList.contains("pagebreak") || el.style.breakBefore === "page") && !empty()) newPage();
 
@@ -2260,15 +2317,32 @@ function renderPages(){
        counts as overflow, which would otherwise mark the page "grow" and stop
        it being a fixed A4 sheet. */
     if(!el.classList.contains("rpt-cover") && over()){
-      /* Doesn't fit here: try it alone on a fresh page before splitting it. */
-      if(body.children.length > 1){ node.remove(); newPage(); body.append(node); }
+      /* Doesn't fit here: try it alone on a fresh page before splitting it.
+         A heading immediately above it comes too, so a page cannot end on a
+         heading whose content starts overleaf. This is the break-after:avoid
+         in the print rules, which the preview has to implement itself. */
+      if(body.children.length > 1){
+        node.remove();
+        let orphan = body.lastElementChild;
+        orphan = orphan && /^H[2-4]$/.test(orphan.tagName) ? orphan : null;
+        /* Unless the heading is all that page has: moving it would leave the
+           page empty and gain nothing. */
+        if(orphan && body.children.length === 1) orphan = null;
+        if(orphan) orphan.remove();
+        newPage();
+        if(orphan) body.append(orphan);
+        body.append(node);
+      }
       if(over()){
         node.remove();
         if(el.tagName === "TABLE") flowTable(el);
         else { body.append(el.cloneNode(true)); page.classList.add("grow"); }
       }
     }
-    if(el.classList.contains("rpt-cover")) page.classList.add("coverpage");
+    if(el.classList.contains("rpt-cover")){
+      page.classList.add("coverpage");
+      const h = page.querySelector(":scope > .rpthead"); if(h) h.remove();
+    }
     if(el.classList.contains("rpt-cover") || el.classList.contains("breakafter")
        || el.style.breakAfter === "page") newPage();   /* break-after:page */
   }
@@ -2285,7 +2359,7 @@ function renderPages(){
     p.append(n);
   });
   host.insertAdjacentHTML("afterbegin",
-    `<p class="pagenote">${pages.length} page(s), approximate. Your browser decides the final breaks when you save the PDF.</p>`);
+    `<p class="pagenote">${pages.length} page(s). This is what prints.</p>`);
 
   /* An image that has not loaded contributes no height, which packs the pages
      that follow it too tightly. Appendix D is mostly full-page images, so on a
@@ -2298,6 +2372,21 @@ function renderPages(){
       .then(() => { renderPages.settling = false; if(pageViewOn()) renderPages(); });
   }
 }
+
+/* Whatever the engineer is looking at, what prints is the paginated sheets,
+   so they are built on the way into every print: the button, Cmd+P, or the
+   browser menu all fire beforeprint first. A print started from the editor
+   shows the preview, since the report is what is being printed. */
+window.addEventListener("beforeprint", () => {
+  if(!report()) return;
+  if($("view-preview").hidden){ buildReport(); show("preview"); }
+  document.body.classList.add("printing");
+  renderPages();
+});
+window.addEventListener("afterprint", () => {
+  document.body.classList.remove("printing");
+  applyPreviewMode();                       /* back to the view that was chosen */
+});
 
 function applyPreviewMode(){
   const on = pageViewOn();
@@ -2447,7 +2536,7 @@ document.addEventListener("click",e=>{
     const rp=report(), d=rp.d;
     if(statusOf(rp)!=="review"){ note("Submit for review first (Review & issue page)."); return; }
     if(!d.reviewerSig){ note("Reviewer must sign before issue (Review & issue page)."); return; }
-    ask(`Issue this report as final?\n\nAuthor: ${d.author}\nReviewer: ${d.reviewer}\n\nThe watermark is removed and the issue is recorded. Any later edit reopens it as a new draft revision.`,"Issue report")
+    ask(`Issue this report as final?\n\nAuthor: ${d.author}\nReviewer: ${d.reviewer}\n\nThe watermark is removed and the issue is recorded. Any later edit reopens it as a new draft version.`,"Issue report")
       .then(ok=>{ if(ok){ rp.issued=new Date().toISOString(); rp.status="issued"; saveDb(); buildReport(); note("Report issued. Print or save the PDF now."); }});
   }
   if(t.id==="addbh"){ report().boreholes.push({method:"",depth:"",water:"NE = not encountered",waterDepth:"",layers:[]}); saveDb(); renderBoreholes(); renderTabs(); }
@@ -2517,8 +2606,8 @@ function refreshTabsSoon(){ clearTimeout(tabsT);
 
 function onFieldEdit(e){
   const el=e.target; const r=report(); if(!r) return;
-  if(r.issued){ r.issued=null; r.status="draft"; r.d.revision=String((parseInt(r.d.revision)||1)+1);
-    note(`Edited after issue. Reopened as draft, revision ${r.d.revision}.`); renderTabs(); }
+  if(r.issued){ r.issued=null; r.status="draft"; r.d.version=String((parseInt(r.d.version)||1)+1);
+    note(`Edited after issue. Reopened as draft, version ${r.d.version}.`); renderTabs(); }
   else if((r.status||"draft")==="review"){ r.status="draft";
     note("Returned to draft. Resubmit for review after edits."); renderTabs(); }
   el.setAttribute("data-touched","");
