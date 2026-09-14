@@ -1,9 +1,7 @@
-// tests/pageview.spec.js
+// tests/e2e/paginated-preview.spec.js
 //
-// Paginated preview. Dev-only, never referenced by index.html or sw.js.
-//
-// The behaviour worth guarding is not "it makes pages" but the two ways it
-// can be quietly wrong:
+// Paginated preview and print. The behaviour worth guarding is not "it makes
+// pages" but the two ways it can be quietly wrong:
 //
 //   1. Laying out against a hidden container. Every height measures 0, so
 //      nothing overflows and the report collapses onto a handful of pages
@@ -12,25 +10,8 @@
 //   2. Touching the issued document. Print always prints #rpt; if page view
 //      ever emptied or replaced it, an engineer in page view would save a
 //      broken PDF.
-//
-// Run with:
-//   cd tests && npm install && npx playwright install chromium && npm test
-//
 const { test, expect } = require('@playwright/test');
-
-async function newReport(page, type) {
-  await page.goto('/index.html');
-  await page.click(`button[data-newtype="${type}"]`);
-  await page.waitForSelector('#view-editor:not([hidden])');
-}
-async function gotoTab(page, label) {
-  await page.click(`#tabrail button:text-is("${label}")`);
-}
-async function openPreview(page) {
-  await gotoTab(page, 'Review & issue');
-  await page.click('#nextbtn');
-  await page.waitForSelector('#view-preview:not([hidden])');
-}
+const { newReport, gotoTab, openPreview } = require('../helpers');
 
 test.describe('paginated preview', () => {
   test('it starts in continuous view and remembers the choice', async ({ page }) => {

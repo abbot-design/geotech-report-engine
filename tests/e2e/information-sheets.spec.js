@@ -1,10 +1,6 @@
-// tests/info-sheets.spec.js
+// tests/e2e/information-sheets.spec.js
 //
-// Appendix D information sheets. Same rules as the other specs: dev-only,
-// never referenced by index.html or sw.js, so it is never downloaded by
-// anyone using the live app.
-//
-// What this file is actually guarding:
+// Appendix D information sheets. Two invariants are guarded here:
 //
 //   1. The offline shell. cache.addAll() rejects on a single 404, which
 //      rejects the install handler, which means no offline cache at all.
@@ -15,20 +11,8 @@
 //      report can never cite a document it does not contain, or contain one
 //      it does not cite. That invariant is easy to break by adding a
 //      citation back into buildReport() by hand.
-//
-// Run with:
-//   cd tests && npm install && npx playwright install chromium && npm test
-//
 const { test, expect } = require('@playwright/test');
-
-async function newReport(page, type) {
-  await page.goto('/index.html');
-  await page.click(`button[data-newtype="${type}"]`);
-  await page.waitForSelector('#view-editor:not([hidden])');
-}
-async function gotoTab(page, label) {
-  await page.click(`#tabrail button:text-is("${label}")`);
-}
+const { newReport, gotoTab, openPreview } = require('../helpers');
 
 /* Read the manifest the same way the app does, out of the running page. */
 async function manifest(page) {
@@ -37,13 +21,6 @@ async function manifest(page) {
     citation: s.citation, furtherInfo: s.furtherInfo,
     pages: INFO_SHEETS.pagePaths(s)
   })));
-}
-
-async function previewHtml(page) {
-  await gotoTab(page, 'Review & issue');
-  await page.click('#nextbtn'); // "Preview report →" on the last tab
-  await page.waitForSelector('#view-preview:not([hidden])');
-  return page.$eval('#rpt', el => el.innerHTML);
 }
 
 /* ------------------------------------------------------------------ *
@@ -156,7 +133,7 @@ test.describe('a ticked sheet is appended, cited and named together', () => {
     await newReport(page, 'classification');
     const sheets = await manifest(page);
     const s = sheets[0];
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
 
     for (const p of s.pages) {
       expect(html, `${p} should be reproduced in Appendix D`).toContain(p);
@@ -174,7 +151,7 @@ test.describe('a ticked sheet is appended, cited and named together', () => {
 
       await gotoTab(page, 'Review & issue');
       await page.uncheck(`input[data-sheet="${s.id}"]`);
-      const html = await previewHtml(page);
+      const html = await openPreview(page);
 
       for (const p of s.pages) {
         expect(html, `${p} must not be appended once unticked`).not.toContain(p);
@@ -192,7 +169,7 @@ test.describe('a ticked sheet is appended, cited and named together', () => {
     await newReport(page, 'classification');
     const sheets = await manifest(page);
     const s = sheets[0];
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
 
     expect(html, 'still cited').toContain(s.citation);
     expect((html.match(/Reproduced in full/g) || []).length,
@@ -256,7 +233,7 @@ test.describe('the appendix map', () => {
   test('the appendix heading in the report matches the map', async ({ page }) => {
     await newReport(page, 'classification');
     const titles = await page.evaluate(() => APPENDIX_TITLES);
-    const html = await previewHtml(page);
+    const html = await openPreview(page);
     // D is the only appendix with content on a report with nothing uploaded.
     expect(html).toContain(`Appendix D: ${titles.D}`);
   });
@@ -305,7 +282,7 @@ test.describe('the appendix map', () => {
     await newReport(page, 'desktop');
     await gotoTab(page, 'Review & issue');
     await page.uncheck('input[data-bool="incGeneral"]');
-    await previewHtml(page);
+    await openPreview(page);
 
     const state = await page.evaluate(() => {
       const heads = [...document.querySelectorAll('#rpt h2')].map(h => h.textContent.trim());

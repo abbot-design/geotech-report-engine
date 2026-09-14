@@ -98,7 +98,7 @@ PDF rather than eyeballed:
 
 **Body copy is deliberately not justified.** Measured, browser justification gives 2.44× word-space
 stretch against the benchmark's 1.19×, because browsers break lines greedily where Word composes a
-paragraph as a whole; even with `hyphens:auto` it only reaches 1.88×. `tests/pageview.spec.js` pins
+paragraph as a whole; even with `hyphens:auto` it only reaches 1.88×. `tests/e2e/paginated-preview.spec.js` pins
 all of these, so they cannot drift back.
 
 **The report is set in an embedded font, the interface is not.** `system-ui` resolves to SF Pro on
@@ -162,7 +162,7 @@ delivery links, and automatic hold-point booking reminders.
 - **Never hand-edit the `info-sheets/pages` entries in `sw.js`.** They are generated. Run
   `node tools/build-info-sheets.mjs` after any change under `info-sheets/`; it rasterises the pages,
   prunes orphans, rewrites the shell list and bumps the cache version, and it is idempotent.
-  `--check` verifies without writing. `tests/info-sheets.spec.js` fails if the two drift.
+  `--check` verifies without writing. `tests/e2e/information-sheets.spec.js` fails if the two drift.
 
 - **Cite the edition you actually append.** The engine cited the 2012 CSIRO "BTF-18" edition for a
   document it never appended; the file now in `info-sheets/` is the December 2024 edition, which has
@@ -171,9 +171,9 @@ delivery links, and automatic hold-point booking reminders.
 
 - **Every URL in the `sw.js` SHELL array must resolve.** `cache.addAll()` rejects on a single 404,
   which rejects the install handler, which means no offline cache at all — the one thing the app
-  exists to do. `tests/ux-round.spec.js` checks this on every run.
+  exists to do. `tests/regression/ux.spec.js` checks this on every run.
 - **Bump `CACHE` in `sw.js` on every deploy**, or installed apps keep serving the old shell.
-- **`tests/prefill.spec.js` is the only automated guard on the Quickbase contract.** There is no
+- **`tests/integration/quickbase-prefill.spec.js` is the only automated guard on the Quickbase contract.** There is no
   schema-checking script and no active maintainer for the integration, so if a `report.d` key is
   renamed, that spec is what catches it. Update it and `docs/qb-contract.md` in the same commit as
   any change to `PREFILL_MAP`.

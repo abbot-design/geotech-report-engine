@@ -93,7 +93,7 @@ function rasterise(sheet) {
    Existing entries are preserved and only the info-sheets/pages ones
    are replaced, so the tool never needs its own copy of the app shell
    and running it twice changes nothing. The array is rewritten as a
-   plain single-line JSON literal because tests/ux-round.spec.js parses
+   plain single-line JSON literal because tests/regression/ux.spec.js parses
    it with JSON.parse - no comments or trailing commas may go inside. */
 function syncServiceWorker(generated) {
   const before = fs.readFileSync(SW, "utf8");

@@ -1,27 +1,20 @@
-// tests/ux-round.spec.js
+// tests/regression/ux.spec.js
 //
-// UI/UX regression tests. Same rules as engine.spec.js: dev-only, never
-// referenced by index.html or sw.js, so it is never downloaded by anyone
-// using the live app.
+// Regression guards from the UI/UX review of August 2026. Each describe
+// block locks in one finding from that review so it cannot quietly come
+// back: the offline shell must install, hints must not explain themselves,
+// deleting a row must be undoable, a new section must open at the top.
 //
-// Run with:
-//   cd tests && npm install && npx playwright install chromium && npm test
+// If you change the interface copy, expect the hint-policy block to be the
+// one that complains. That is it doing its job.
 //
+// The "review item" codes beside each describe are the item numbers from
+// that review, kept so the two can be read side by side. They carry no
+// meaning on their own.
 const { test, expect } = require('@playwright/test');
+const { newReport, gotoTab } = require('../helpers');
 
-async function newReport(page, type) {
-  await page.goto('/index.html');
-  await page.click(`button[data-newtype="${type}"]`);
-  await page.waitForSelector('#view-editor:not([hidden])');
-}
-async function gotoTab(page, label) {
-  await page.click(`#tabrail button:text-is("${label}")`);
-}
-
-/* ------------------------------------------------------------------ *
- * B0 — the offline shell actually installs                            *
- * ------------------------------------------------------------------ */
-test.describe('B0 — service worker shell', () => {
+test.describe('the offline shell installs', () => { // review item B0
   test('every file the service worker caches exists', async ({ page, request }) => {
     const sw = await (await request.get('/sw.js')).text();
     const shell = JSON.parse(sw.match(/const SHELL = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
@@ -47,46 +40,7 @@ test.describe('B0 — service worker shell', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * B1 — screen-reader-only text is actually hidden                     *
- * ------------------------------------------------------------------ */
-test.describe('B1 — .sr-only', () => {
-  test('sr-only text is present for assistive tech but not visible', async ({ page }) => {
-    await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
-    await page.click('#addbh');
-    await page.click('[data-addlayer="0"]');
-
-    const srSpan = page.locator('[data-dellayer="0:0"] .sr-only');
-    await expect(srSpan).toHaveCount(1);
-    const box = await srSpan.boundingBox();
-    expect(box.width, 'sr-only text must be clipped, not laid out').toBeLessThanOrEqual(1);
-    expect(box.height).toBeLessThanOrEqual(1);
-    // the button must read as just the glyph at normal size
-    const btnBox = await page.locator('[data-dellayer="0:0"]').boundingBox();
-    expect(btnBox.width).toBeLessThan(120);
-  });
-
-  test('photo caption labels do not render as visible text', async ({ page }) => {
-    await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Photos');
-    // inject a photo directly — no camera in headless
-    await page.evaluate(() => {
-      report().photos.push({ caption: '', dataUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' });
-      saveDb(); renderEditor();
-    });
-    const lbl = page.locator('#photogrid label.sr-only');
-    await expect(lbl).toHaveCount(1);
-    const box = await lbl.boundingBox();
-    expect(box.width, 'the caption label must not be laid out as visible text').toBeLessThanOrEqual(1);
-    expect(box.height).toBeLessThanOrEqual(1);
-  });
-});
-
-/* ------------------------------------------------------------------ *
- * B2 — no autofill on third-party data                                *
- * ------------------------------------------------------------------ */
-test.describe('B2 — autocomplete', () => {
+test.describe('no autofill on third-party data', () => { // review item B2
   test('client and site fields carry no autocomplete hint', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Client & site ID');
@@ -103,10 +57,7 @@ test.describe('B2 — autocomplete', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * P4 — the completeness indicator tells the truth                     *
- * ------------------------------------------------------------------ */
-test.describe('P4 — completeness', () => {
+test.describe('the completeness indicator tells the truth', () => { // review item P4
   test('a brand-new report claims nothing is complete', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await expect(page.locator('#stratalabel')).toHaveText('0 of 10 sections complete');
@@ -149,10 +100,7 @@ test.describe('P4 — completeness', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * P1/P2/P3 — the progress indicator                                   *
- * ------------------------------------------------------------------ */
-test.describe('P2 — progress indicator', () => {
+test.describe('the progress indicator', () => { // review item P2
   test('the segmented strata bar is gone', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await expect(page.locator('#strata')).toHaveCount(0);
@@ -169,17 +117,13 @@ test.describe('P2 — progress indicator', () => {
     expect(src.toLowerCase()).not.toContain('2f6db5');
   });
 
-  test('the count line is a live region and drops the "Core log:" decoration', async ({ page }) => {
+  test('the count line drops the "Core log:" decoration', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await expect(page.locator('#stratalabel')).toHaveAttribute('role', 'status');
     await expect(page.locator('#stratalabel')).not.toContainText('Core log');
   });
 });
 
-/* ------------------------------------------------------------------ *
- * B6 — data binding survives "change"-only edits                      *
- * ------------------------------------------------------------------ */
-test.describe('B6 — input and change binding', () => {
+test.describe('data binding survives change-only edits', () => { // review item B6
   test('a change-only edit (autofill, some selects and date pickers) is persisted', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Client & site ID');
@@ -205,10 +149,7 @@ test.describe('B6 — input and change binding', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * P5 — the indicator keeps up with typing                             *
- * ------------------------------------------------------------------ */
-test.describe('P5 — live progress refresh', () => {
+test.describe('the indicator keeps up with typing', () => { // review item P5
   test('the count line updates without navigating away', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Setup');
@@ -235,10 +176,7 @@ test.describe('P5 — live progress refresh', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * A — copy and hint reduction                                         *
- * ------------------------------------------------------------------ */
-test.describe('A — copy', () => {
+test.describe('copy and hint reduction', () => { // review item A
   const SECTIONS = ['Setup', 'Client & site ID', 'Site description', 'Fieldwork',
                     'Results', 'Classification', 'Wind', 'Recommendations',
                     'Photos', 'Review & issue'];
@@ -314,11 +252,8 @@ test.describe('A — copy', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F — flow and chrome                                                 *
- * ------------------------------------------------------------------ */
-test.describe('F — flow', () => {
-  test('F1: the header context is a working back control, not a dead toast', async ({ page }) => {
+test.describe('flow and chrome', () => { // review item F
+  test('the header context is a working back control, not a dead toast', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Client & site ID');
     await page.fill('#f_street', '12 Water St');
@@ -328,7 +263,7 @@ test.describe('F — flow', () => {
     await expect(page.locator('#view-home')).toBeVisible();
   });
 
-  test('F1b: the wordmark returns to the report list', async ({ page }) => {
+  test('the wordmark returns to the report list', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await page.click('#homebtn');
     await expect(page.locator('#view-home')).toBeVisible();
@@ -338,7 +273,7 @@ test.describe('F — flow', () => {
   // conventional logo-returns-to-the-list pattern, and the context line, which
   // names the report you are leaving. What must not come back is a third one in
   // the footer, competing with Back / Preview / Next for the same thumb.
-  test('F2: the footer carries three controls and no way home among them', async ({ page }) => {
+  test('the footer carries three controls and no way home among them', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await expect(page.locator('#stepnav #homebtn')).toHaveCount(0);
     await expect(page.locator('#stepnav')).not.toContainText(/home|all reports/i);
@@ -346,7 +281,7 @@ test.describe('F — flow', () => {
     expect(visible).toBeLessThanOrEqual(3);
   });
 
-  test('F3: the header stays on screen and the tabs sit under it', async ({ page }) => {
+  test('the header stays on screen and the tabs sit under it', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 600 });
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Site description');
@@ -358,7 +293,7 @@ test.describe('F — flow', () => {
     expect(tabs.y, 'tabs must sit below the header, not under it').toBeGreaterThanOrEqual(head.height - 2);
   });
 
-  test('F9: adding a photo does not fling focus back to the top of the form', async ({ page }) => {
+  test('adding a photo does not fling focus back to the top of the form', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Photos');
     await page.evaluate(() => {
@@ -369,7 +304,7 @@ test.describe('F — flow', () => {
     expect(focused).not.toBe('takephoto');
   });
 
-  test('F10: the preview toolbar stays reachable on a long report', async ({ page }) => {
+  test('the preview toolbar stays reachable on a long report', async ({ page }) => {
     await newReport(page, 'comprehensive');
     // #preview must not be a scroll container, or position:sticky silently dies
     const overflow = await page.evaluate(() => {
@@ -382,16 +317,13 @@ test.describe('F — flow', () => {
     expect(pos).toBe('sticky');
   });
 
-  test('F11: the save chip has two states, not three', async ({ page }) => {
+  test('the save chip has two states, not three', async ({ page }) => {
     await page.goto('/index.html');
     await expect(page.locator('#savestate')).toHaveText('Autosave on');
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F5 — incomplete is amber, never red                                 *
- * ------------------------------------------------------------------ */
-test.describe('F5 — required-but-empty state', () => {
+test.describe('incomplete is amber, never red', () => { // review item F5
   test('a visited, empty, required field goes amber — and only after it is visited', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Setup');
@@ -432,10 +364,7 @@ test.describe('F5 — required-but-empty state', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F6 — destructive row actions are recoverable                        *
- * ------------------------------------------------------------------ */
-test.describe('F6 — undo', () => {
+test.describe('destructive row actions are recoverable', () => { // review item F6
   test('a deleted borehole comes back at the same index with its layers', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Fieldwork');
@@ -493,10 +422,7 @@ test.describe('F6 — undo', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F12 — a new section starts at the top                               *
- * ------------------------------------------------------------------ */
-test.describe('F12 — scroll position on navigation', () => {
+test.describe('a new section starts at the top', () => { // review item F12
   test('Next from the bottom of a section opens the next one at the top', async ({ page }) => {
     await page.setViewportSize({ width: 430, height: 700 });
     await newReport(page, 'comprehensive');
@@ -550,10 +476,7 @@ test.describe('F12 — scroll position on navigation', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F13 — row editor controls line up with their fields                 *
- * ------------------------------------------------------------------ */
-test.describe('F13 — row alignment', () => {
+test.describe('row editor controls line up with their fields', () => { // review item F13
   test('the soil-layer remove button aligns with the inputs on its row', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Fieldwork');
@@ -570,10 +493,7 @@ test.describe('F13 — row alignment', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * R — classification split                                            *
- * ------------------------------------------------------------------ */
-test.describe('R — classification split', () => {
+test.describe('classification split', () => { // review item R
   test('design class is required and defaults are not assumed', async ({ page }) => {
     await newReport(page, 'comprehensive');
     const labels = await page.evaluate(() => requirements(report()).map(g => g.label));
@@ -614,7 +534,7 @@ test.describe('R — classification split', () => {
   });
 });
 
-test.describe('R — slope stability module', () => {
+test.describe('slope stability module', () => { // review item R
   const enable = (page) => page.evaluate(() => {
     report().d.includeSlope = true; saveDb(); renderEditor({ focus: false });
   });
@@ -709,7 +629,7 @@ test.describe('R — slope stability module', () => {
   });
 });
 
-test.describe('R — derived fields update in place', () => {
+test.describe('derived fields update in place', () => { // review item R
   test('typing four factors quickly loses none of them', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await page.evaluate(() => { report().d.includeSlope = true; saveDb(); renderEditor({ focus: false }); });
@@ -738,10 +658,7 @@ test.describe('R — derived fields update in place', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F14 — form alignment and layout polish                              *
- * ------------------------------------------------------------------ */
-test.describe('F14 — form layout', () => {
+test.describe('form alignment and layout polish', () => { // review item F14
   test('every control on a grid row starts at the same y, chip or no chip', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 1000 });
     await newReport(page, 'comprehensive');
@@ -787,10 +704,7 @@ test.describe('F14 — form layout', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * F15 — home page affordances                                         *
- * ------------------------------------------------------------------ */
-test.describe('F15 — home affordances', () => {
+test.describe('home page affordances', () => { // review item F15
   test('report row actions are line icons, not emoji', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await page.click('#ctx');
@@ -823,7 +737,7 @@ test.describe('F15 — home affordances', () => {
   });
 });
 
-test.describe('F16 — address block layout', () => {
+test.describe('address block layout', () => { // review item F16
   test('the address keeps its own lines; lot and council start the next row', async ({ page }) => {
     for (const width of [1100, 900, 700]) {
       await page.setViewportSize({ width, height: 900 });

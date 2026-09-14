@@ -243,7 +243,7 @@ else is counted and named in the banner that appears when a prefilled report ope
 stops sending a field, the payload simply lacks that key and the banner says what is still needed —
 in front of the person who can fix it, at the moment they can fix it. Nothing fails silently.
 
-**2. The Playwright spec** (`tests/prefill.spec.js`) asserts the canonical payload lands in every
+**2. The Playwright spec** (`tests/integration/quickbase-prefill.spec.js`) asserts the canonical payload lands in every
 field. If a `report.d` key is renamed in `index.html`, it goes red. **This is the only automated
 guard in the system — do not delete it.**
 
