@@ -11,6 +11,6 @@
     "test:a11y": "playwright test accessibility"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.0"
+    "@playwright/test": "^1.63.0"
   }
 }

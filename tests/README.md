@@ -1,7 +1,7 @@
 # Report engine tests
 
-End-to-end tests for `index.html`, driven by a real headless browser
-(Playwright). Wherever possible they assert on the generated report HTML
+End-to-end tests for `index.html`, driven by real headless browsers
+(Playwright, in Chromium, Firefox and WebKit). Wherever possible they assert on the generated report HTML
 (`#rpt`) — the document an engineer will sign and issue — rather than on
 the form that produced it, because the two can drift apart in ways that
 look fine on screen.
@@ -94,14 +94,25 @@ npx playwright install chromium
 Then, any time:
 
 ```
-npm test                  # everything, well under a minute
+npm test                  # everything, in all three engines, about a minute
 npm run test:list         # read the suite as a specification, run nothing
 npm run test:e2e          # one category: e2e | regression | integration | a11y
-npx playwright test -g "Quickbase"   # anything whose name matches
+npx playwright test --project=chromium     # one engine, ~20 s
+npx playwright test -g "Quickbase"         # anything whose name matches
+npx playwright test --ui                   # step through with DOM snapshots
 ```
 
 `npm test` starts a local static server over the repo root and runs the
 suite against it — no manual server setup needed.
+
+Every test runs once per engine. WebKit is the one that matters most and
+was untested until September 2026: an engineer on an iPad or a Mac issues
+the PDF from Safari, and the font and pagination specs exist because the
+same report used to paginate differently depending on whose browser
+printed it.
+
+The first-time install above fetches Chromium only; add the others with
+`npx playwright install firefox webkit`.
 
 ## When to run it
 
