@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<title>Abbot Design Geotech Report Engine: quick manual</title>
+<style>
+  @page { size: A4; margin: 10mm 13mm 9mm; }
+  @font-face { font-family: "Carlito"; src: url("../../vendor/fonts/carlito-regular.woff2") format("woff2"); font-weight: 400; }
+  @font-face { font-family: "Carlito"; src: url("../../vendor/fonts/carlito-bold.woff2") format("woff2"); font-weight: 700; }
+  @font-face { font-family: "Carlito"; src: url("../../vendor/fonts/carlito-italic.woff2") format("woff2"); font-style: italic; }
+  :root { --navy:#1f2a44; --sky:#4a90c2; --ink:#1a1a1a; --muted:#555; --rule:#c8cfd4; --band:#eef3f1; }
+  html, body { margin:0; padding:0; }
+  body { font-family: "Carlito", Calibri, Carlito, sans-serif; font-size: 9.3pt; line-height: 1.28; color: var(--ink); }
+  header { display:flex; align-items:center; justify-content:space-between; gap:10mm;
+           border-bottom: 2.5pt solid var(--navy); padding-bottom: 2.2mm; margin-bottom: 3mm; }
+  header img { height: 11mm; width:auto; }
+  header .t { text-align:right; }
+  header .t b { display:block; font-size: 14pt; color: var(--navy); letter-spacing:.02em; }
+  header .t span { color: var(--muted); font-size: 9pt; }
+  h2 { font-size: 9.6pt; letter-spacing: .08em; text-transform: uppercase; color: var(--navy);
+       margin: 3.2mm 0 1.2mm; padding-bottom: .6mm; border-bottom: .6pt solid var(--rule); }
+  p { margin: 0 0 1.4mm; }
+  ul, ol { margin: 0 0 1.4mm; padding-left: 4.2mm; }
+  li { margin: 0 0 .6mm; }
+  .cols { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; }
+  .cols h3 { font-size: 9.4pt; margin: 0 0 .8mm; color: var(--navy); }
+  .cols ol { padding-left: 4mm; }
+  .two { display:grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .addr { background: var(--band); border-left: 3pt solid var(--sky); padding: 1.6mm 2.6mm; margin: 1.8mm 0 0; }
+  .addr b { font-size: 10.5pt; color: var(--navy); }
+  .steps { list-style:none; padding:0; margin:0; counter-reset: s; }
+  .steps li { position:relative; padding-left: 6.5mm; margin-bottom: 1mm; }
+  .steps li::before { counter-increment: s; content: counter(s); position:absolute; left:0; top:.1mm;
+      width: 4.6mm; height: 4.6mm; border-radius: 50%; background: var(--navy); color:#fff;
+      font-weight:700; font-size: 7.6pt; text-align:center; line-height: 4.6mm; }
+  .k { font-weight:700; }
+  .badge { display:inline-block; font-size:7.4pt; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+           padding: .2mm 1.6mm; border-radius: 2pt; vertical-align: .3pt; }
+  .draft { background:#fbe9d2; color:#8a4b00; } .review { background:#e2ecf7; color:#1f4e79; } .issued { background:#dcefdf; color:#1e5e2e; }
+  footer { margin-top: 3mm; padding-top: 1.6mm; border-top: .6pt solid var(--rule); color: var(--muted); font-size: 8.6pt;
+           display:flex; justify-content:space-between; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="../../assets/abbot-logo.svg" alt="Abbot Design">
+  <div class="t"><b>Geotech Report Engine</b><span>Quick manual for engineers. One page, everything you need.</span></div>
+</header>
+
+<h2>What it is</h2>
+<p>A web app that installs on your phone, tablet or computer like any other app. You fill in a geotechnical report
+section by section, on site or back at the office, and it builds the certifier-ready PDF: cover, contents, numbering,
+appendices, the lot. Everything saves as you type, with or without a signal.</p>
+
+<h2>Install once on each device</h2>
+<div class="cols">
+  <div><h3>iPhone / iPad (Safari)</h3>
+    <ol><li>Open the web address in Safari</li><li>Tap <span class="k">Share</span> (the square with an arrow)</li><li>Tap <span class="k">Add to Home Screen</span>, then <span class="k">Add</span></li></ol></div>
+  <div><h3>Android (Chrome)</h3>
+    <ol><li>Open the web address in Chrome</li><li>Tap the <span class="k">⋮</span> menu, top right</li><li>Tap <span class="k">Add to Home screen</span> or <span class="k">Install app</span></li></ol></div>
+  <div><h3>Windows / Mac (Chrome or Edge)</h3>
+    <ol><li>Open the web address in the browser</li><li>Click the install icon at the right end of the address bar</li><li>Click <span class="k">Install</span></li></ol></div>
+</div>
+<p class="addr"><b>abbot-design.github.io/geotech-report-engine</b><br>
+After installing, it opens from your home screen and works without internet. This manual is always one tap away
+under the <span class="k">? Help</span> button in the app.</p>
+
+<div class="two">
+<div>
+<h2>Starting a report</h2>
+<ul>
+  <li><span class="k">From Quickbase (usual way):</span> open the Geotech Report record and press
+      <span class="k">Send to Report Engine</span>. The engine opens with the client, site, author and reviewer already
+      filled in. Check the address split into suburb, state and postcode; Quickbase keeps it as one line.</li>
+  <li><span class="k">Pressing the button again later</span> is safe: it reopens the same report, and if anything has
+      changed in Quickbase it shows you what differs and asks before overwriting.</li>
+  <li><span class="k">By hand:</span> Home, then pick a type under <span class="k">Start a new report</span>.
+      Desktop Geotechnical Assessment, Site Classification + Wind, or Comprehensive Site Investigation.
+      You can change the type later; hidden sections keep their data.</li>
+</ul>
+
+<h2>Filling it in</h2>
+<ul>
+  <li>Walk the sections with <span class="k">Next</span>, or jump anywhere from the tabs. The rail shows which
+      sections are started, complete, or still need something.</li>
+  <li>Fields marked <span class="k">Required to issue</span> block the final report until filled. Everything else is
+      optional and simply left out of the document if blank.</li>
+  <li><span class="k">Photos</span> go straight into the photo appendix with their captions. Use JPEG: on iPhone set
+      Settings, Camera, Formats to <span class="k">Most Compatible</span>, as HEIC photos will not load.</li>
+  <li><span class="k">PDF uploads</span> of lab or DCP results drop their pages into the results appendix; site-plan PDFs do
+      the same into the plans appendix. The first PDF you add needs internet once; after that it works offline.</li>
+  <li><span class="k">Information sheets</span> (CSIRO foundation maintenance and the like) are ticked on or off under
+      Appendices on the Review &amp; issue page and appear in Appendix D and the references automatically.</li>
+  <li>Waiting on the lab? Tick <span class="k">Results still pending</span> on the Results page. The report cannot be
+      issued while it is ticked, so nothing goes out with the numbers missing.</li>
+</ul>
+</div>
+
+<div>
+<h2>The workflow</h2>
+<ol class="steps">
+  <li><span class="k">Draft</span> <span class="badge draft">Draft</span>: fill everything in. <span class="k">Preview</span>
+      shows the document at any time, with a DRAFT watermark across every page.</li>
+  <li><span class="k">Author</span>: on the <span class="k">Review &amp; issue</span> page, sign on screen and press
+      <span class="k">Submit for review</span>. <span class="badge review">Awaiting review</span></li>
+  <li><span class="k">Reviewer</span>: sign, or press <span class="k">Request changes</span> to send it back as a draft.</li>
+  <li><span class="k">Issue</span>: from Preview, press <span class="k">Issue final report</span>. The watermark comes off,
+      the version and issue date are fixed. <span class="badge issued">Issued</span></li>
+  <li><span class="k">Print</span>: Preview, then <span class="k">Print / Save as PDF</span> and choose Save as PDF as the
+      printer. <span class="k">Page view</span> shows the exact A4 pages first if you want to check them.</li>
+</ol>
+<p>Any edit after submitting returns the report to draft. Any edit after issuing reopens it as a new draft
+<span class="k">version</span> (v2, v3 and so on), so an issued PDF can never quietly drift from the data behind it.</p>
+
+<h2>Moving a report between devices</h2>
+<ul>
+  <li><span class="k">Not started yet</span> (say, raised in the office, fieldwork on a tablet): open it and press
+      <span class="k">Send to another device</span> on the Review &amp; issue page, then scan the QR code with the other
+      device's camera.</li>
+  <li><span class="k">Has photos or field data</span>: Home, the export arrow on the report, which saves a .json file
+      named for the site. Email or AirDrop it, then on the other device use Home,
+      <span class="k">Transfer between devices</span>, <span class="k">Import a report</span>.</li>
+</ul>
+
+<h2>Things to be aware of</h2>
+<ul>
+  <li>Reports live only on the device they were made on. There is no cloud copy yet, so export anything important.</li>
+  <li>On iPhone and iPad, always open it from the home-screen icon. Safari can clear a website's storage after a week
+      without use; the installed app keeps it.</li>
+  <li>Do not clear browsing history or site data for this app: that deletes its reports. Export first if you must.</li>
+  <li>Deleting a report from the list is instant, with an <span class="k">Undo</span> offered for a few seconds. After that it is gone.</li>
+</ul>
+</div>
+</div>
+
+<footer><span>Help: Ryan Chalmers, 1800 027 882, geotech@abbotdesign.com.au</span><span>Abbot Design Geotech Report Engine, September 2026</span></footer>
+</body>
+</html>
