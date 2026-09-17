@@ -183,13 +183,13 @@ test.describe('paginated preview', () => {
     expect(lastHasContent, 'the last sheet should carry report content').toBeGreaterThan(0);
   });
 
-  test('the footer carries the firm and the job, not the street address', async ({ page }) => {
+  test('the footer carries the firm and the issue, not the street address', async ({ page }) => {
     await newReport(page, 'classification');
     await openPreview(page);
     const text = await page.$eval('#rpt .rptfoot', el => el.textContent);
     expect(text).toContain('ABBOT DESIGN');
     expect(text).toContain('ABN');
-    expect(text).toContain('Job');
+    expect(text).toMatch(/v1 · DRAFT/);
     expect(text, 'the street address is on the cover, it does not belong on every page')
       .not.toContain('Palmer Street');
   });
@@ -317,9 +317,9 @@ test.describe('paginated preview', () => {
     expect(cover.projLabelInline,
       'Project: runs inline with its value, it is not a heading on its own line').toBe(true);
     expect(cover.projLineCount, 'description, address, lot').toBe(3);
-    expect(cover.metaLines.length, 'Prepared for, Job No, and version/date').toBe(3);
+    expect(cover.metaLines.length, 'Prepared for, and version/date').toBe(2);
     expect(cover.metaLines[0]).toMatch(/^Prepared for:/);
-    expect(cover.metaLines[1]).toMatch(/^Job No:/);
+    expect(cover.metaLines[1]).toMatch(/^Version /);
   });
 
   test('every cover line is centred, and a long project wraps under 75% of the page',
@@ -377,8 +377,6 @@ test.describe('paginated preview', () => {
     // Fill the cover first: on a blank report the labels have no values, the
     // block is shorter, and the test passes while a real cover overlaps.
     await newReport(page, 'classification');
-    await gotoTab(page, 'Setup');
-    await page.fill('#f_jobNo', 'AD-2026-014');
     await gotoTab(page, 'Client & site ID');
     await page.fill('#f_client', 'ABC Corp');
     await page.fill('#f_projectDesc', 'New single storey dwelling and detached garage');
@@ -599,8 +597,6 @@ test.describe('paginated preview', () => {
       // implement keep-with-next itself, or a heading strands at a page foot
       // with the content it introduces overleaf.
       await newReport(page, type);
-      await gotoTab(page, 'Setup');
-      await page.fill('#f_jobNo', 'AD-1');
       await gotoTab(page, 'Client & site ID');
       await page.fill('#f_client', 'ABC Corp');
       await page.fill('#f_projectDesc', 'New single storey dwelling');
@@ -647,7 +643,6 @@ test.describe('paginated preview', () => {
     // a page boundary and has to be bumped whole rather than split.
     await newReport(page, 'classification');
     await gotoTab(page, 'Setup');
-    await page.fill('#f_jobNo', 'AD-1');
     await page.fill('#f_author', 'A Author');
     await page.fill('#f_reviewer', 'A Reviewer');
     await gotoTab(page, 'Client & site ID');

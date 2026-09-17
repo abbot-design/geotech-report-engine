@@ -106,8 +106,6 @@ test.describe('embedded report font', () => {
 
   test('the footer fits on one line at the text measure', async ({ page }) => {
     await newReport(page, 'classification');
-    await page.click('#tabrail button:text-is("Setup")');
-    await page.fill('#f_jobNo', 'AD-2026-0147');   // long job number
     await openPreview(page);
     await page.click('#pageview');
     await page.waitForSelector('.rptpage');

@@ -13,7 +13,6 @@ const PAYLOAD = {
   qb:  '1',              // contract version; anything else starts the app unprefilled
   ty:  'classification', // report type: desktop | classification | comprehensive
   rid: '4821',           // Quickbase Record ID#, kept as provenance in report.source
-  jn:  'AD-2026-014',
   cl:  'Example Client Pty Ltd',
   co:  'Jane Architect',
   cp:  '0412 345 678',
@@ -36,7 +35,7 @@ const PAYLOAD = {
 // Payload key -> the DOM id of the input it must land in. qb, ty and rid are
 // not fields; they steer the import and are asserted separately.
 const LANDS_IN = {
-  jn: '#f_jobNo',   cl: '#f_client',   co: '#f_careOf', pd: '#f_projectDesc',
+  cl: '#f_client',  co: '#f_careOf',   pd: '#f_projectDesc',
   cp: '#f_clientPhone', ce: '#f_clientEmail',
   st: '#f_street',  sb: '#f_suburb',   sa: '#f_state',  pc: '#f_postcode',
   ld: '#f_lotDp',   cc: '#f_council',  au: '#f_author',

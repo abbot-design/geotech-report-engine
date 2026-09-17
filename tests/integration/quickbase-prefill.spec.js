@@ -58,7 +58,7 @@ test.describe('Quickbase prefill', () => {
 
     // Setup section fields.
     await gotoTab(page, 'Setup');
-    for (const key of ['jn', 'au', 'aq', 'ar', 'rv', 'rq', 'rr']) {
+    for (const key of ['au', 'aq', 'ar', 'rv', 'rq', 'rr']) {
       await expect(page.locator(LANDS_IN[key]), `payload key "${key}"`)
         .toHaveValue(PAYLOAD[key]);
     }
@@ -311,7 +311,7 @@ test.describe('Device handoff QR', () => {
     expect(url).toContain('#qb=1');
 
     const parsed = new URLSearchParams(new URL(url).hash.slice(1));
-    for (const key of ['jn', 'cl', 'co', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc',
+    for (const key of ['cl', 'co', 'pd', 'st', 'sb', 'sa', 'pc', 'ld', 'cc',
                        'au', 'aq', 'ar', 'rv', 'rq', 'rr', 'cp', 'ce']) {
       expect(parsed.get(key), `round-trip of "${key}"`).toBe(PAYLOAD[key]);
     }
@@ -360,7 +360,6 @@ test.describe('inert when the Quickbase side does not exist', () => {
     await page.goto('/index.html');
     await page.click('button[data-newtype="classification"]');
     await page.waitForSelector('#view-editor:not([hidden])');
-    await page.fill('#f_jobNo', 'AD-MANUAL-1');
     await page.click('#tabrail button:text-is("Client & site ID")');
     await page.fill('#f_client', 'Hand Typed Client');
     await page.click('#previewbtn');

@@ -68,8 +68,8 @@ test.describe('the completeness indicator tells the truth', () => { // review it
   test('a started-but-incomplete section is distinguishable from an untouched one', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Setup');
-    await page.fill('#f_jobNo', 'AD-TEST-002');
-    await page.locator('#f_jobNo').blur();
+    await page.fill('#f_author', 'A Author');
+    await page.locator('#f_author').blur();
     await expect(page.locator('#tabrail button:text-is("Setup")')).toHaveClass(/started/);
     await expect(page.locator('#tabrail button:text-is("Setup")')).not.toHaveClass(/done/);
     await expect(page.locator('#stratalabel')).toHaveText('0 of 10 sections complete');
@@ -154,7 +154,6 @@ test.describe('the indicator keeps up with typing', () => { // review item P5
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Setup');
     await expect(page.locator('#stratalabel')).toHaveText('0 of 10 sections complete');
-    await page.fill('#f_jobNo', 'AD-TEST-003');
     await page.fill('#f_author', 'Ryan Chalmers');
     await page.fill('#f_reviewer', 'Test Reviewer');
     // no tab click, no Next — the rail must catch up on its own
@@ -236,7 +235,7 @@ test.describe('copy and hint reduction', () => { // review item A
     }
     await gotoTab(page, 'Setup');
     const marked = await page.locator('#form .reqmark').count();
-    expect(marked).toBe(3); // jobNo, author, reviewer
+    expect(marked).toBe(2); // author, reviewer
   });
 
   test('the required markers match the issue gate exactly', async ({ page }) => {
@@ -247,8 +246,8 @@ test.describe('copy and hint reduction', () => { // review item A
       els => els.map(e => e.closest('div').querySelector('[data-k]').dataset.k));
     const gapSecs = await page.evaluate(() =>
       requirements(report()).filter(g => g.sec === 'setup').length);
-    expect(markedIds.sort()).toEqual(['author', 'jobNo', 'reviewer']);
-    expect(gapSecs).toBe(3);
+    expect(markedIds.sort()).toEqual(['author', 'reviewer']);
+    expect(gapSecs).toBe(2);
   });
 });
 
@@ -337,12 +336,12 @@ test.describe('incomplete is amber, never red', () => { // review item F5
   test('typing clears the amber state immediately', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Setup');
-    await page.locator('#f_jobNo').focus();
-    await page.locator('#f_jobNo').blur();
-    await expect(page.locator('#f_jobNo')).toHaveAttribute('data-need', '');
-    await page.fill('#f_jobNo', 'AD-2026-014');
-    await page.locator('#f_jobNo').blur();
-    await expect(page.locator('#f_jobNo')).not.toHaveAttribute('data-need', /.*/);
+    await page.locator('#f_author').focus();
+    await page.locator('#f_author').blur();
+    await expect(page.locator('#f_author')).toHaveAttribute('data-need', '');
+    await page.fill('#f_author', 'A Author');
+    await page.locator('#f_author').blur();
+    await expect(page.locator('#f_author')).not.toHaveAttribute('data-need', /.*/);
   });
 
   test('optional fields are never flagged', async ({ page }) => {
@@ -734,6 +733,52 @@ test.describe('home page affordances', () => { // review item F15
     await expect(page.locator('#ctx')).toBeVisible();
     await page.click('#ctx');
     await expect(page.locator('#ctx')).toBeHidden();
+  });
+
+  // There is no job number, so two reports for the same client at the same
+  // address are told apart by type, lot and version. The lot only earns its
+  // place on the second line when the first line is showing the street
+  // rather than falling back to the lot itself.
+  test('a listing is distinguished by type, lot and version', async ({ page }) => {
+    await newReport(page, 'classification');
+    await page.click('#ctx');
+    await expect(page.locator('ul.reports li small')).toHaveText(/^Site Classification \+ Wind Report · v1 · updated /);
+
+    await page.click('button[data-open]');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_lotDp', 'Lot 12 DP 1234567');
+    await page.click('#ctx');
+    await expect(page.locator('ul.reports li b')).toContainText('Lot 12 DP 1234567');
+    await expect(page.locator('ul.reports li small'), 'the lot is already the site line')
+      .toHaveText(/^Site Classification \+ Wind Report · v1 · updated /);
+
+    await page.click('button[data-open]');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_street', '12 Example Road');
+    await page.evaluate(() => { report().d.version = '2'; saveDb(); });
+    await page.click('#ctx');
+    await expect(page.locator('ul.reports li small'))
+      .toHaveText(/^Site Classification \+ Wind Report · Lot 12 DP 1234567 · v2 · updated /);
+    await expect(page.locator('ul.reports li small')).not.toContainText('Job');
+  });
+
+  test('the export is named for the site, not an internal id', async ({ page }) => {
+    await newReport(page, 'classification');
+    await page.click('#ctx');
+    expect(await page.evaluate(() => fileSlug(report() || Object.values(db)[0])))
+      .toMatch(/^R[0-9a-z]+$/);           // nothing known yet: the report id
+
+    await page.click('button[data-open]');
+    await gotoTab(page, 'Client & site ID');
+    await page.fill('#f_street', "12 O'Brien Road");
+    await page.fill('#f_suburb', 'Cessnock');
+    expect(await page.evaluate(() => fileSlug(report()))).toBe('12-o-brien-road-cessnock');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('#ctx').then(() => page.click('ul.reports li button[data-export]')),
+    ]);
+    expect(download.suggestedFilename()).toBe('abbot-12-o-brien-road-cessnock.json');
   });
 });
 

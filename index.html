@@ -330,7 +330,7 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    than running the full measure. */
 .rpt-cover .projblock{max-width:157.5mm;margin-left:auto;margin-right:auto}
 .rpt-cover .projblock p{margin:.15rem 0;font-size:1.05rem}
-/* Prepared for, Job No, and the version and date, each centred on the page. */
+/* Prepared for, and the version and date, each centred on the page. */
 .rpt-cover .cmeta{margin:1.4em 0 0;font-size:.95rem;color:#333}
 .rpt-cover h1{font-size:1.65rem;margin:2.2rem 0 0}
 /* The specific report type reads as a subtitle under the standing title, so it
@@ -381,8 +381,8 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
 .rpt .photos figure{margin:0;border:1px solid #bbb;padding:.3rem}
 .rpt .photos img{width:100%;display:block}
 .rpt .photos figcaption{font-size:.8rem;padding-top:.25rem}
-/* 8pt, matching the benchmark, with the contact line and the job line on one
-   row at a 160mm measure and headroom for a long job number. */
+/* 8pt, matching the benchmark, with the contact line and the issue line on one
+   row at a 160mm measure. */
 /* A small mark and the date, so a page separated from the report still says
    whose it is and which issue. Draft-dated until the report is issued. */
 /* Tops aligned rather than centred, so the mark and the date share a baseline
@@ -772,7 +772,7 @@ function blank(type){
   return {
     id: "R" + now.getTime().toString(36),
     type, created: now.toISOString(), updated: now.toISOString(), issued: null, status:"draft", submitted:null,
-    d: { jobNo:"", version:"1", dateIssued: localISODate(now),
+    d: { version:"1", dateIssued: localISODate(now),
       author:"", authorQual:"", authorReg:"", reviewer:"", reviewerQual:"", reviewerReg:"",
       client:"", careOf:"", clientPhone:"", clientEmail:"",
       projectDesc:"", street:"", suburb:"", state:"NSW", postcode:"", lotDp:"", council:"",
@@ -816,7 +816,7 @@ const PREFILL_V = "1";
    them by default — the cover page does not need a client's phone and
    email. */
 const PREFILL_MAP = {
-  jn:"jobNo",  cl:"client",   co:"careOf",  pd:"projectDesc",
+  cl:"client", co:"careOf",   pd:"projectDesc",
   st:"street", sb:"suburb",   sa:"state",   pc:"postcode",
   ld:"lotDp",  cc:"council",
   /* Author and reviewer credentials are the same every time for a given
@@ -831,7 +831,7 @@ const PREFILL_MAP = {
    PREFILL_MAP, which is the wire contract — this is only ever shown to a
    human and never affects what is sent or applied. */
 const PREFILL_LABELS = {
-  jobNo:"Job number", client:"Client", careOf:"Care of", projectDesc:"Proposed works",
+  client:"Client", careOf:"Care of", projectDesc:"Proposed works",
   street:"Street", suburb:"Suburb", state:"State", postcode:"Postcode",
   lotDp:"Lot & DP", council:"Council", author:"Author",
   authorQual:"Author qualifications", authorReg:"Author registrations",
@@ -1067,7 +1067,6 @@ function mdlite(src){
 /* ---------- completeness (the issue gate) ---------- */
 function requirements(r){
   const q=[], d=r.d, need=(cond,label,sec)=>{ if(!cond) q.push({label,sec}); };
-  need(d.jobNo,"Job number","setup");
   need(d.author,"Author (engineer)","setup");
   need(d.reviewer,"Reviewer for issue","setup");
   need(d.client,"Client name","client");
@@ -1104,7 +1103,7 @@ function requirements(r){
    groundwater, limitations) are deliberately excluded — they are not evidence
    of work done. */
 const SECFIELDS = {
-  setup:["jobNo","author","authorQual","authorReg","reviewer","reviewerQual","reviewerReg"],
+  setup:["author","authorQual","authorReg","reviewer","reviewerQual","reviewerReg"],
   client:["client","careOf","clientPhone","clientEmail","projectDesc","street","suburb","postcode","lotDp","council","drawingsBy","drawingNos","drawingsDate"],
   site:["access","existing","vegetation","slopeDeg","aspect","drainage","neighbours","geologyMap","geologyUnit","history"],
   field:["fieldDate","operator","weather","equipment"],
@@ -1172,6 +1171,25 @@ function siteLabel(d){
   if(d.lotDp) return d.lotDp;
   return "site not yet identified";
 }
+/* The second line of a listing: what tells two reports for the same client
+   at the same address apart. Type, then the Lot & DP when the bold line above
+   is not already showing it, then the version, since a re-issue is the usual
+   reason the same site appears twice. */
+function listDetail(r){
+  const d=r.d, parts=[TYPES[r.type].label];
+  if(d.lotDp && d.street) parts.push(d.lotDp);
+  parts.push(`v${d.version||"1"}`);
+  parts.push(`updated ${new Date(r.updated).toLocaleDateString("en-AU")}`);
+  return parts.join(" · ");
+}
+/* A filename an engineer can recognise in a Downloads folder: the site, or
+   failing that the report's own id. ASCII only, so it survives every
+   platform's idea of a safe filename. */
+function fileSlug(r){
+  const site = [r.d.street, r.d.suburb].filter(Boolean).join(" ") || r.d.lotDp || "";
+  const slug = site.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return slug || r.id;
+}
 function renderHome(){
   /* The header context doubles as "back to all reports"; on the list itself it
      has nowhere to go, so it is hidden rather than empty. */
@@ -1182,11 +1200,11 @@ function renderHome(){
   for(const r of items){
     const li=document.createElement("li");
     li.innerHTML = `<div class="meta"><b>${esc(r.d.client||"(no client yet)")} · ${esc(siteLabel(r.d))}</b>
-      <small>${esc(TYPES[r.type].label)} · Job ${esc(r.d.jobNo||"not set")} · updated ${new Date(r.updated).toLocaleDateString("en-AU")}</small></div>
+      <small>${esc(listDetail(r))}</small></div>
       <span class="badge ${statusOf(r)}">${{draft:"Draft",review:"Awaiting review",issued:"Issued"}[statusOf(r)]}</span>
       <button class="primary" data-open="${r.id}">Open</button>
-      <button data-export="${r.id}" title="Export as .json" aria-label="Export ${esc(r.d.jobNo||r.d.client||"report")}">${ICON_EXPORT}</button>
-      <button class="danger" data-del="${r.id}" title="Delete" aria-label="Delete ${esc(r.d.jobNo||r.d.client||"report")}">${ICON_DELETE}</button>`;
+      <button data-export="${r.id}" title="Export as .json" aria-label="Export ${esc(r.d.client||"report")}">${ICON_EXPORT}</button>
+      <button class="danger" data-del="${r.id}" title="Delete" aria-label="Delete ${esc(r.d.client||"report")}">${ICON_DELETE}</button>`;
     list.appendChild(li);
   }
 }
@@ -1233,7 +1251,7 @@ function renderTabs(opts){
   $("nextbtn").textContent = sectionIdx===secs.length-1 ? "Preview report →" : "Next →";
   $("previewbtn").hidden = sectionIdx===secs.length-1;
   $("ctx").hidden = false;
-  $("ctx").textContent = `← ${report().d.street||"New report"} · Job ${report().d.jobNo||"not set"}`;
+  $("ctx").textContent = `← ${report().d.street||"New report"}`;
 }
 
 /* field helpers */
@@ -1348,7 +1366,6 @@ setup(r){ return `
   <div><label for="f_type">Report type</label>
    <select id="f_type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${r.type===k?" selected":""}>${v.label}</option>`).join("")}</select>
    <p class="hint">Hidden sections keep their data.</p></div>
-  ${F("jobNo","Job number",{req:1,ph:"AD-2026-014"})}
   ${F("version","Version",{narrow:1})}
   ${F("dateIssued","Date of issue",{type:"date",narrow:1})}
  </div>
@@ -2154,8 +2171,7 @@ function buildReport(){
       <p>${esc(d.lotDp)}</p>
     </div>
     <p class="cmeta"><b>Prepared for:</b> ${esc(d.client)}${d.careOf?` c/- ${esc(d.careOf)}`:""}</p>
-    <p class="cmeta"><b>Job No:</b> ${esc(d.jobNo)}</p>
-    <p class="cmeta">Version ${esc(d.version)}<br>${dt(d.dateIssued)}</p>
+      <p class="cmeta">Version ${esc(d.version)}<br>${dt(d.dateIssued)}</p>
   </div>
 
   <h2>What to do with this report</h2>
@@ -2199,7 +2215,7 @@ function buildReport(){
   ${apps.map(a=>`<h2 class="pagebreak">Appendix ${a.letter}: ${esc(a.t)}</h2>${a.html}`).join("")}
 
   <footer class="rptfoot"><span>${esc(FIRM.name)} · Ph ${esc(FIRM.phone)} · ${esc(FIRM.email)} · ${esc(FIRM.abn)}</span>
-   <span>Job ${esc(d.jobNo)} · v${esc(d.version)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
+   <span>v${esc(d.version)} · ${r.issued?"ISSUED":"DRAFT"}</span></footer>`;
 
   const pdfAtts=(r.attachments||[]).filter(a=>a.kind==="pdf");
   const gaps = requirements(r);
@@ -2496,7 +2512,7 @@ function initSigPads(){
 function exportReport(id){
   const r=db[id]; const blob=new Blob([JSON.stringify(r,null,1)],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download=`abbot-${(r.d.jobNo||r.id)}.json`; a.click(); URL.revokeObjectURL(a.href);
+  a.download=`abbot-${fileSlug(r)}.json`; a.click(); URL.revokeObjectURL(a.href);
 }
 
 /* ============================================================
@@ -2614,7 +2630,7 @@ function onFieldEdit(e){
     note("Returned to draft. Resubmit for review after edits."); renderTabs(); }
   el.setAttribute("data-touched","");
   if(el.dataset.k!==undefined){ r.d[el.dataset.k]= el.value; saveDb();
-    if(["jobNo","street"].includes(el.dataset.k)) $("ctx").textContent=`← ${r.d.street||"New report"} · Job ${r.d.jobNo||"not set"}`; }
+    if(el.dataset.k==="street") $("ctx").textContent=`← ${r.d.street||"New report"}`; }
   if(el.id==="f_type"){ r.type=el.value; sectionIdx=Math.min(sectionIdx, visibleSections().length-1); saveDb(); renderEditor({focus:false}); return; }
   if(el.id==="f_windNote"){ r.d.windNote=el.checked; saveDb(); }
   if(el.dataset.bool){ r.d[el.dataset.bool]=el.checked; saveDb();
