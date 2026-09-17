@@ -56,7 +56,6 @@ formula-string escaping is the fiddliest part of Quickbase and this avoids it en
 |---|---|---|---|
 | `rid` | *(→ `report.source.recordId`)* | `Record ID#` | 3 |
 | `ty` | *(→ `report.type`)* | `Report Type` | 6 |
-| `jn` | `jobNo` | `Job No` | 7 |
 | `cl` | `client` | `Project - Customer` *(lookup)* | 20 |
 | `co` | `careOf` | `Project - Customer Contact` *(lookup)* | 21 |
 | `cp` | `clientPhone` | `Project - Customer Contact Ph` *(lookup)* | 24 |
@@ -140,7 +139,6 @@ and would be the most fragile thing in the system.
 | Field | Type |
 |---|---|
 | Report Type | Text - Multiple Choice: `desktop`, `classification`, `comprehensive` |
-| Job No | Text |
 | Street | Text |
 | Suburb | Text |
 | State | Text - Multiple Choice, default `NSW` |
@@ -187,7 +185,6 @@ var text P =
     "#qb=1"
   & "&rid=" & URLEncode(ToText([Record ID#]))
   & "&ty="  & URLEncode([Report Type])
-  & "&jn="  & URLEncode([Job No])
   & "&cl="  & URLEncode([Project - Customer])
   & "&co="  & URLEncode([Project - Customer Contact])
   & "&pd="  & URLEncode([Project - Project Detail])

@@ -19,7 +19,7 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
 - **Three report types** (Desktop Assessment / Site Classification + Wind / Comprehensive
   Investigation) sharing one data spine; switching type hides sections without deleting data.
 - **Tab navigation + Next/Back** — jump anywhere, or walk the sections in field order.
-- **Single-source data**: address, dates, job number, class are entered once and flow through the
+- **Single-source data**: address, dates, class are entered once and flow through the
   entire document (WCAG 2.2 “redundant entry”, and the fix for the internal-contradiction failures
   seen in competitor samples).
 - **Dynamic field records**: boreholes with layered soil profiles, DCP tests, lab samples (LL/LS).

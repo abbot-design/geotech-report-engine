@@ -12,7 +12,7 @@ test.describe('house style', () => {
     await newReport(page, 'classification');
     await gotoTab(page, 'Setup');
     const style = await page.evaluate(() => {
-      const el = document.getElementById('f_jobNo');
+      const el = document.getElementById('f_authorQual');
       return getComputedStyle(el, '::placeholder').fontStyle;
     });
     expect(style, 'placeholder must not read as an entered value').toBe('italic');
@@ -25,7 +25,7 @@ test.describe('house style', () => {
     const found = await page.evaluate(() => {
       const d = report().d;
       // Fill enough that every branch of the document renders something.
-      d.jobNo = 'ABC-1'; d.author = 'A Author'; d.reviewer = 'A Reviewer';
+      d.author = 'A Author'; d.reviewer = 'A Reviewer';
       d.client = 'A Client'; d.street = '1 Test St'; d.suburb = 'Testville';
       d.postcode = '2000'; d.lotDp = 'Lot 1 DP 1'; d.projectDesc = 'A dwelling';
       d.siteClass = 'M'; d.designClass = 'M'; d.classJust = 'x'; d.windClass = 'N2';

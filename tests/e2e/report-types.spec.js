@@ -12,7 +12,6 @@ const { newReport, gotoTab, openPreview } = require('../helpers');
 
 async function fillCommon(page) {
   await gotoTab(page, 'Setup');
-  await page.fill('#f_jobNo', 'AD-TEST-001');
   await page.fill('#f_author', 'Ryan Chalmers');
   await page.fill('#f_reviewer', 'Test Reviewer');
 
