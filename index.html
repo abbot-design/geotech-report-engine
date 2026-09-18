@@ -342,6 +342,11 @@ input[data-need]:focus,select[data-need]:focus,textarea[data-need]:focus{backgro
    than the content it introduces and fights the body copy for attention. */
 .rpt th,.rpt td{border:1px solid #c8cfd4;padding:.38rem .55rem;text-align:left;vertical-align:top}
 .rpt th{background:#dde5e2;color:var(--ink);font-weight:700;border-color:#bcc7c3}
+.rpt table.borelog td:first-child,.rpt table.dcpsheet td,.rpt table.dcpsheet th{white-space:nowrap}
+.rpt table.dcpsheet{font-size:.78rem}
+.rpt table.dcpsheet th,.rpt table.dcpsheet td{padding:.22rem .3rem;text-align:center}
+.rpt table.dcpsheet td.note{text-align:left;white-space:normal;font-size:.76rem}
+.rpt .gw{white-space:nowrap;font-weight:700}
 /* Plain bold with the number hanging in its own column, as report headings
    are conventionally set. The coloured bar and gradient wash read as a web UI
    component rather than a document heading. */
@@ -719,6 +724,159 @@ const APPENDIX_TITLES = {
 };
 
 /* ============================================================
+   FIELD LOG VOCABULARY AND SUMMARY (AS 1726:2017)
+
+   The terms and abbreviations a borehole log is allowed to print.
+   They are the standard's words (clause 6.1 for soil, 6.2 for rock)
+   but not its tables: the appendix legend is Abbot's own list of
+   these terms, cited to the standard. One list feeds the class
+   picker, the composed description and the legend, so a log can
+   never print an abbreviation the legend does not define.
+
+   kind decides which condition terms a layer carries (6.1.7):
+     coarse  moisture D/M/W; density, which the standard says is
+             assessed by penetration testing, not by eye;
+     fine    plasticity; moisture relative to the plastic limit;
+             consistency;
+     rock    weathering and strength (6.2.4);
+     other   cobbles and boulders, which the standard does not
+             classify.
+
+   Readings are stored every 100 mm (pp[] and dcp[] on a borehole,
+   blows[] on a DCP test: index k is the interval k×0.1 to (k+1)×0.1 m)
+   and printed every 300 mm, the engineer's request: the log keeps
+   the resolution the test was recorded at and the page loses the
+   empty rows. Blows sum across an interval; pocket penetrometer
+   readings do not, so they are listed.
+   ============================================================ */
+const AS1726 = {
+  classes: [
+    {sym:"GW", name:"well graded GRAVEL",   kind:"coarse"},
+    {sym:"GP", name:"poorly graded GRAVEL", kind:"coarse"},
+    {sym:"GM", name:"silty GRAVEL",         kind:"coarse"},
+    {sym:"GC", name:"clayey GRAVEL",        kind:"coarse"},
+    {sym:"SW", name:"well graded SAND",     kind:"coarse"},
+    {sym:"SP", name:"poorly graded SAND",   kind:"coarse"},
+    {sym:"SM", name:"silty SAND",           kind:"coarse"},
+    {sym:"SC", name:"clayey SAND",          kind:"coarse"},
+    {sym:"ML", name:"SILT, low plasticity",   kind:"fine"},
+    {sym:"CL", name:"CLAY, low plasticity",   kind:"fine"},
+    {sym:"CI", name:"CLAY, medium plasticity",kind:"fine"},
+    {sym:"OL", name:"organic SILT",           kind:"fine"},
+    {sym:"MH", name:"SILT, high plasticity",  kind:"fine"},
+    {sym:"CH", name:"CLAY, high plasticity",  kind:"fine"},
+    {sym:"OH", name:"organic CLAY",           kind:"fine"},
+    {sym:"Pt", name:"PEAT",                   kind:"fine"},
+    ...["SANDSTONE","SILTSTONE","CLAYSTONE","MUDSTONE","SHALE","CONGLOMERATE","BRECCIA","LIMESTONE",
+        "COAL","TUFF","BASALT","DOLERITE","GRANITE","SLATE","SCHIST","GNEISS","QUARTZITE"]
+      .map(n=>({sym:n, name:n, kind:"rock"})),
+    {sym:"COBBLES", name:"COBBLES and BOULDERS", kind:"other"}
+  ],
+  prefixes: ["", "TOPSOIL", "FILL"],
+  plasticity: ["Non-plastic","Low plasticity","Medium plasticity","High plasticity"],   /* carried by the fine-grained symbols; listed for the legend */
+  moistureCoarse: [{t:"Dry",a:"D"},{t:"Moist",a:"M"},{t:"Wet",a:"W"}],
+  moistureFine: [
+    {t:"Moist, dry of plastic limit",  a:"M (w<PL)"},
+    {t:"Moist, near plastic limit",    a:"M (w≈PL)"},
+    {t:"Moist, wet of plastic limit",  a:"M (w>PL)"},
+    {t:"Wet, near liquid limit",       a:"W (w≈LL)"},
+    {t:"Wet, wet of liquid limit",     a:"W (w>LL)"}],
+  consistency: [{t:"Very soft",a:"VS"},{t:"Soft",a:"S"},{t:"Firm",a:"F"},{t:"Stiff",a:"St"},
+                {t:"Very stiff",a:"VSt"},{t:"Hard",a:"H"},{t:"Friable",a:"Fr"}],
+  density: [{t:"Very loose",a:"VL"},{t:"Loose",a:"L"},{t:"Medium dense",a:"MD"},{t:"Dense",a:"D"},{t:"Very dense",a:"VD"}],
+  weathering: [{t:"Residual soil",a:"RS"},{t:"Extremely weathered",a:"XW"},{t:"Highly weathered",a:"HW"},
+               {t:"Moderately weathered",a:"MW"},{t:"Distinctly weathered",a:"DW"},{t:"Slightly weathered",a:"SW"},{t:"Fresh",a:"FR"}],
+  strength: [{t:"Very low strength",a:"VL"},{t:"Low strength",a:"L"},{t:"Medium strength",a:"M"},
+             {t:"High strength",a:"H"},{t:"Very high strength",a:"VH"},{t:"Extremely high strength",a:"EH"}],
+  origins: ["Residual","Extremely weathered material","Alluvial","Estuarine","Marine","Lacustrine","Aeolian","Colluvial","Topsoil","Fill"],
+  /* The standard requires the termination depth and reason on a log but
+     does not list reasons; these are the ones that appear on logs. */
+  termReasons: ["Target depth","Refusal on rock","Refusal on obstruction","Hole collapse","Water inflow","Other"],
+  dcp: {mass:"9 kg", drop:"510 mm", rod:"16 mm", ref:"AS 1289.6.3.2"}
+};
+const classInfo = sym => AS1726.classes.find(c=>c.sym===sym) || null;
+const abbrOf = (list, term) => { const m=list.find(x=>x.t===term); return m ? m.a : term; };
+
+/* A layer entered with the AS 1726 pickers, or one entered before they
+   existed. The old shape (class + free-text description) prints exactly as
+   typed; the new one is composed in the clause 6.1.3 order. */
+const layerStructured = L => ["prefix","plasticity","moisture","consistency","density","weathering","strength","origin"].some(k=>L[k]);
+function layerLine(L, abbr){
+  if(!layerStructured(L)) return [L.uscs, L.desc].filter(Boolean).join(" ");
+  const c = classInfo(L.uscs);
+  const head = !c ? (L.uscs||"") : (c.kind==="rock"||c.kind==="other") ? c.name : `${c.sym} ${c.name}`;
+  const fine = c && c.kind==="fine";
+  const word = (list, t) => abbr ? abbrOf(list, t) : t.toLowerCase();
+  /* A fine-grained symbol already names its plasticity (CI is medium); a
+     typed plasticity is only added where the class does not carry one. */
+  const plas = L.plasticity && !/plasticity/i.test(head) ? L.plasticity.toLowerCase() : "";
+  const parts = [[head, plas, L.desc].filter(Boolean).join(", ")];
+  if(L.moisture)    parts.push(word(fine ? AS1726.moistureFine : AS1726.moistureCoarse, L.moisture));
+  if(L.consistency) parts.push(word(AS1726.consistency, L.consistency));
+  if(L.density)     parts.push(word(AS1726.density, L.density));
+  if(L.weathering)  parts.push(word(AS1726.weathering, L.weathering));
+  if(L.strength)    parts.push(word(AS1726.strength, L.strength));
+  if(L.origin)      parts.push(L.origin.toLowerCase());
+  const line = parts.join("; ") + ".";
+  return L.prefix ? `${L.prefix}: ${line}` : line;
+}
+/* The printed class column carries the group symbol; a rock row has none. */
+function layerSymbol(L){ const c=classInfo(L.uscs); return c && c.kind!=="coarse" && c.kind!=="fine" ? "" : (L.uscs||""); }
+
+const num = v => { const n=parseFloat(v); return isNaN(n) ? null : n; };
+const lastFilled = arr => { let n=(arr||[]).length; while(n>0 && (arr[n-1]==null || String(arr[n-1]).trim()==="")) n--; return n; };
+const hasReadings = b => lastFilled(b.pp)>0 || lastFilled(b.dcp)>0;
+/* Typed termination depth first; otherwise the deepest thing logged, which
+   is what the engineer knows only once the hole is finished. */
+function termDepth(b){
+  const typed = num(b.depth); if(typed!=null) return typed;
+  let d = 0;
+  (b.layers||[]).forEach(L=>{ const t=num(L.to); if(t!=null && t>d) d=t; });
+  d = Math.max(d, lastFilled(b.pp)*0.1, lastFilled(b.dcp)*0.1);
+  return Math.round(d*1000)/1000;
+}
+const fmtDepth = n => n.toFixed(1);
+/* Blows over an interval: numbers add, an R (refusal) anywhere carries. */
+function sumBlows(vals){
+  let sum=0, any=false, refusal=false;
+  (vals||[]).forEach(v=>{ const s=String(v==null?"":v).trim(); if(!s) return;
+    if(/r/i.test(s)) refusal=true;
+    const n=parseFloat(s); if(!isNaN(n)){ sum+=n; any=true; } });
+  if(!any && !refusal) return "";
+  return (any ? String(sum) : "") + (refusal ? (any?" R":"R") : "");
+}
+const refusalDepth = blows => { const i=(blows||[]).findIndex(v=>/r/i.test(String(v==null?"":v))); return i<0 ? null : (i+1)*0.1; };
+/* The 300 mm rows of a borehole log. A layer prints in the row it starts
+   in, with its exact depth where that is not the row boundary. */
+function log300(b){
+  const term = termDepth(b), rows=[], n=Math.ceil(term/0.3 - 1e-9);
+  const wd = /encountered|seepage|observed/i.test(b.water||"") && !/not/i.test(b.water||"") ? num(b.waterDepth) : null;
+  for(let k=0;k<n;k++){
+    const from=Math.round(k*300)/1000, to=Math.min(Math.round((k+1)*300)/1000, term);
+    rows.push({ from, to,
+      layers: (b.layers||[]).filter(L=>{ const f=num(L.from); return f!=null && f>=from-1e-9 && f<to-1e-9; }),
+      pp:  (b.pp||[]).slice(k*3,k*3+3).map(v=>String(v==null?"":v).trim()).filter(Boolean),
+      dcp: sumBlows((b.dcp||[]).slice(k*3,k*3+3)),
+      water: wd!=null && wd>=from-1e-9 && wd<to-1e-9 ? wd : null });
+  }
+  return rows;
+}
+/* Every DCP series on the job: the ones driven beside a borehole and the
+   standalone tests, in that order, each with the refusal depth read from
+   the blows where they exist and from the typed depth where they do not. */
+function dcpSeries(r){
+  const out=[];
+  r.boreholes.forEach((b,i)=>{ if(lastFilled(b.dcp)>0)
+    out.push({label:`DCP at BH${i+1}`, location:`Beside BH${i+1}`, rl:b.rl||"", blows:b.dcp,
+              refusal:refusalDepth(b.dcp), remark:b.dcpNote||""}); });
+  (r.dcps||[]).forEach((x,i)=>{ const blows=x.blows||[];
+    out.push({label:`DCP ${i+1}`, location:x.location||"Refer to site plan", rl:x.rl||"", blows,
+              refusal:refusalDepth(blows) ?? num(x.depth), remark:x.note||""}); });
+  return out;
+}
+const dcpSummary = t => [t.refusal!=null ? `Refusal at ${fmtDepth(t.refusal)} m.` : "", t.remark].filter(Boolean).join(" ");
+
+/* ============================================================
    APPENDIX D INFORMATION SHEETS
    The registry is info-sheets/manifest.js, loaded as a plain script
    above. One entry there drives the tick box, the References
@@ -793,7 +951,8 @@ function blank(type){
       authorSig:"", reviewerSig:"", authorSigDate:"", reviewerSigDate:"",
       incLegend:true, incClassDefs:true, incGeneral:true, appGeneral:GENERAL_NOTES_DEFAULT,
       infoDocs:{},   /* id -> true/false, only where the engineer overrode the default */
-      distribution:"", dist:[], recRows:[], awaitingResults:false },
+      distribution:"", dist:[], recRows:[], awaitingResults:false,
+      bhRemarks:"", dcpRemarks:"" },
     boreholes: [], dcps: [], samples: [], photos: [], plans: [], attachments: [],
     source: null   // reserved: quote-system prefill (phase 2)
   };
@@ -1460,11 +1619,13 @@ field(r){ return `
  <p class="hint" style="margin-top:0">AS 1726 layer order: name; colour; moisture; consistency/density; structure; origin.</p>
  <div id="bhlist" class="rowlist"></div>
  <button type="button" id="addbh">+ Add borehole</button>
+ <div class="grid" style="margin-top:.8rem">${F("bhRemarks","General remarks (boreholes)",{type:"textarea",wide:1,ph:"Hand auger refused on sandstone in both holes. Access limited to the rear yard."})}</div>
 </fieldset>
 <fieldset><legend>DCP tests</legend>
  <p class="hint" style="margin-top:0">Summary only; upload the full DCP report under Results.</p>
  <div id="dcplist" class="rowlist"></div>
  <button type="button" id="adddcp">+ Add DCP test</button>
+ <div class="grid" style="margin-top:.8rem">${F("dcpRemarks","General remarks (DCP tests)",{type:"textarea",wide:1,ph:"Test locations limited by large trees, hard surfaces and possible buried services."})}</div>
 </fieldset>`; },
 
 lab(r){ return `
@@ -1859,6 +2020,9 @@ function buildReport(){
   const issuedState = st==="issued" ? "" :
     `<div class="wm" aria-hidden="true"><b>${st==="review"?"IN REVIEW":"DRAFT"}: NOT FOR CONSTRUCTION</b></div>`;
   const dt = s => s? new Date(s+"T00:00").toLocaleDateString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric"}) : "Not set";
+  const dcpTests = dcpSeries(r);
+  /* Sentence-opening counts: "Two boreholes", "Six DCP tests", "12 DCP tests". */
+  const countWord = n => ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"][n] || String(n);
 
   /* ---- numbered section model: builder gets a sub() helper that
      emits numbered <h3>s and records them for the contents page ---- */
@@ -1907,13 +2071,23 @@ function buildReport(){
       <p>Fieldwork was undertaken on <b>${dt(d.fieldDate)}</b>${d.operator?` by ${esc(d.operator)}`:""}${d.weather?` (${esc(d.weather)})`:""}.
        ${d.equipment?esc(d.equipment):""} The investigation was scoped to the proposed development and the site's known
        history before drilling commenced. Groundwater: ${esc(d.groundwater)}.</p>
-      ${r.boreholes.length?sub("Borehole summary")+`
-       <table><tr><th>Hole</th><th>Method</th><th>Depth</th><th>Water</th><th>Profile</th></tr>
-       ${r.boreholes.map((b,i)=>`<tr><td>BH${i+1}</td><td>${esc(b.method)}</td><td>${esc(b.depth)} m</td><td>${esc(b.water)}${b.waterDepth?` @ ${esc(b.waterDepth)} m`:""}</td>
-         <td>${b.layers.map(L=>`${esc(L.from)}–${esc(L.to)} m: ${esc(L.uscs)} ${esc(L.desc)}`).join("<br>")||"Not logged"}</td></tr>`).join("")}</table>`:""}
-      ${r.dcps.length?sub("Dynamic cone penetrometer tests (AS 1289.6.3.2)")+`
-       <table><tr><th>Test</th><th>Result</th><th>Note</th></tr>
-       ${r.dcps.map((x,i)=>`<tr><td>DCP ${i+1}</td><td>Refusal @ ${esc(x.depth)} m</td><td>${esc(x.note)}</td></tr>`).join("")}</table>`:""}
+      ${r.boreholes.length?sub("Boreholes")+(()=>{
+        /* Summary only. The engineer asked that row data (layers, readings)
+           appear in the appendix logs and nowhere else in the document. */
+        const n=r.boreholes.length, labels=r.boreholes.map((b,i)=>`BH${i+1}`);
+        const methods=[...new Set(r.boreholes.map(b=>b.method).filter(Boolean))].map(m=>m.toLowerCase());
+        return `<p>${countWord(n)} borehole${n===1?"":"s"} (${joinAnd(labels)}) ${n===1?"was":"were"} put down${methods.length?` by ${joinAnd(methods)}`:""}
+         at the approximate locations shown on the site plan, to identify the subsurface profile. Engineering logs of the
+         boreholes are presented in Appendix C.</p>
+       <table><tr><th>Hole</th><th>Method</th><th>Depth (m)</th><th>Groundwater</th><th>Terminated</th></tr>
+       ${r.boreholes.map((b,i)=>`<tr><td>BH${i+1}</td><td>${esc(b.method)}</td><td>${esc(b.depth)||fmtDepth(termDepth(b))}</td><td>${esc(b.water)}${b.waterDepth?` @ ${esc(b.waterDepth)} m`:""}</td>
+         <td>${esc(b.termReason)||"Not recorded"}</td></tr>`).join("")}</table>`; })():""}
+      ${dcpTests.length?sub(`Dynamic cone penetrometer tests (${AS1726.dcp.ref})`)+`
+       <p>${countWord(dcpTests.length)} DCP test${dcpTests.length===1?" was":"s were"} carried out to assess the in situ relative density of the shallow soils
+        and the depth to rock, in accordance with ${AS1726.dcp.ref}.${d.dcpRemarks?" "+esc(d.dcpRemarks):""} Test locations are shown on the
+        site plan and the full results are presented in Appendix C.</p>
+       <table><tr><th style="width:22%">Test</th><th>Summary</th></tr>
+       ${dcpTests.map(t=>`<tr><td>${esc(t.label)}</td><td>${esc(dcpSummary(t))||"Not recorded"}</td></tr>`).join("")}</table>`:""}
       ${r.samples.length?sub("Laboratory results")+`
        <p>${d.labName?`Testing by ${esc(d.labName)}`:""}${d.labDate?`, ${dt(d.labDate)}`:""}.</p>
        <table><tr><th>Sample</th><th>Borehole</th><th>Depth (m)</th><th>Material</th><th>LL %</th><th>LS %</th></tr>
@@ -2021,7 +2195,7 @@ function buildReport(){
 
   addSec("References", sub=>{
     const refs = citedStandards(r).map(s=>STD_CITATIONS[s.ref]).filter(Boolean);
-    if(r.dcps.length) refs.push("Standards Australia 1997, Methods of Testing Soils for Engineering Purposes, AS 1289.6.3.2–1997.");
+    if(dcpTests.length) refs.push("Standards Australia 1997, Methods of Testing Soils for Engineering Purposes, AS 1289.6.3.2–1997.");
     if(d.windNote) refs.push("Standards Australia/Standards New Zealand 2021, Structural Design Actions Part 2: Wind Actions, AS/NZS 1170.2:2021.");
     /* Cited because the assessment applied it, not because of the report
        type. A flat comprehensive site with no slope module and no hazard
@@ -2038,19 +2212,38 @@ function buildReport(){
     return `<ul>${refs.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   }, {newPage:true});
 
+  /* Abbot's own list of the AS 1726 terms the logs print, not the standard's
+     tables. Every entry comes from AS1726 above, so an abbreviation cannot
+     appear on a log without appearing here. */
+  const soilSyms = AS1726.classes.filter(c=>c.kind==="coarse"||c.kind==="fine");
+  const rockNames = AS1726.classes.filter(c=>c.kind==="rock").map(c=>c.name);
+  const abbrList = list => list.map(x=>`<b>${esc(x.a)}</b> ${esc(x.t.toLowerCase())}`).join(" · ");
   const LEGEND_HTML = `
-    <table><tr><th>Moisture</th><th>Consistency (clays)</th><th>Density (sands)</th><th>Water</th></tr>
-     <tr><td>D = dry<br>M = moist<br>W = wet</td>
-         <td>VS = very soft<br>S = soft<br>F = firm<br>St = stiff<br>VSt = very stiff<br>H = hard</td>
-         <td>VL = very loose<br>L = loose<br>MD = medium dense<br>D = dense<br>VD = very dense</td>
-         <td>NE = not encountered<br>E = encountered</td></tr></table>
+    <p><small>Terms and abbreviations follow AS 1726–2017. Soil and rock names are in capitals; a secondary component is an
+       adjective (clayey SAND); TOPSOIL and FILL lead the description; terms are separated by semicolons in the order
+       composition, condition, structure, origin.</small></p>
+    <table>
+     <tr><th style="width:26%">Soil group symbols</th><td>${soilSyms.map(c=>`<b>${esc(c.sym)}</b> ${esc(c.name)}`).join(" · ")}</td></tr>
+     <tr><th>Rock</th><td>Named by rock type (${rockNames.join(", ")}). Cobbles and boulders are described, not classified.</td></tr>
+     <tr><th>Plasticity (fine grained)</th><td>${AS1726.plasticity.map(esc).join(" · ")}</td></tr>
+     <tr><th>Moisture (coarse grained)</th><td>${abbrList(AS1726.moistureCoarse)}</td></tr>
+     <tr><th>Moisture (fine grained)</th><td>${abbrList(AS1726.moistureFine)}</td></tr>
+     <tr><th>Consistency (cohesive)</th><td>${abbrList(AS1726.consistency)}</td></tr>
+     <tr><th>Density (non-cohesive)</th><td>${abbrList(AS1726.density)}, assessed from penetration testing</td></tr>
+     <tr><th>Rock weathering</th><td>${abbrList(AS1726.weathering)}</td></tr>
+     <tr><th>Rock strength</th><td>${abbrList(AS1726.strength)}</td></tr>
+     <tr><th>Groundwater</th><td><b>▽</b> water level observed at the depth shown · <b>NE</b> not encountered · <b>E</b> encountered</td></tr>
+     <tr><th>Readings</th><td><b>PP</b> pocket penetrometer, kPa · <b>DCP</b> dynamic cone penetrometer blows per 300&nbsp;mm, recorded per 100&nbsp;mm ·
+        <b>R</b> refusal, hammer bouncing</td></tr></table>
     <h3>Investigation methods</h3>
     <p><b>Push tube (PT/PTH):</b> a ~50&nbsp;mm tube pushed into the ground by machine or hand; recovers a relatively
        undisturbed sample. <b>Hand auger (HA):</b> a 75&nbsp;mm auger screwed into the ground by hand.
        <b>Auger drilling (AD):</b> continuous spiral flight auger, withdrawn at intervals for sampling.
        <b>Test pit (TP):</b> excavated by backhoe or excavator for close examination of in-situ soil.
-       <b>Dynamic cone penetrometer (DCP):</b> a rod driven by a falling weight, blows recorded per 100&nbsp;mm
-       increment, to AS 1289.6.3.2. Laboratory testing, where specified, is carried out by NATA-accredited laboratories.</p>`;
+       <b>Dynamic cone penetrometer (DCP):</b> a ${AS1726.dcp.mass} hammer falling ${AS1726.dcp.drop} drives a ${AS1726.dcp.rod} rod
+       with a cone tip; blows are recorded per 100&nbsp;mm increment to ${AS1726.dcp.ref}.
+       <b>Pocket penetrometer (PP):</b> a hand-held spring gauge pressed into the recovered sample, read in kPa.
+       Laboratory testing, where specified, is carried out by NATA-accredited laboratories.</p>`;
 
   const CLASSDEFS_HTML = `
     <table><tr><th>Class</th><th>General definition (AS 2870)</th></tr>
@@ -2073,17 +2266,68 @@ function buildReport(){
     +"(Australian Geomechanics Society), available from Abbot Design on request.");
   const FURTHER_HTML = furtherBits.length ? `<h3>Further guidance</h3><p>${furtherBits.join(" ")}</p>` : "";
 
-  const BORELOG_HTML = (r.boreholes.length||r.dcps.length) ? `
-    ${r.boreholes.map((b,i)=>`<h3>Borehole log BH${i+1}</h3>
-     <p><small>Method: ${esc(b.method)||"not recorded"} · Terminated at ${esc(b.depth)||"not recorded"} m · Water: ${esc(b.water)}${b.waterDepth?` @ ${esc(b.waterDepth)} m`:""} ·
-        Logged ${dt(d.fieldDate)}${d.operator?` by ${esc(d.operator)}`:""}</small></p>
-     <table><tr><th style="width:18%">Depth (m)</th><th style="width:12%">Class</th><th>Description</th></tr>
-      ${b.layers.length?b.layers.map(L=>`<tr><td>${esc(L.from)} – ${esc(L.to)}</td><td>${esc(L.uscs)}</td><td>${esc(L.desc)}</td></tr>`).join("")
-        :`<tr><td colspan="3">No layers logged</td></tr>`}
-      <tr><td colspan="3"><i>Borehole terminated at ${esc(b.depth)||"not recorded"} m below ground level</i></td></tr></table>`).join("")}
-    ${r.dcps.length?`<h3>Dynamic cone penetration test results (AS 1289.6.3.2)</h3>
-     <table><tr><th>Test</th><th>Refusal depth</th><th>Result note</th></tr>
-      ${r.dcps.map((x,i)=>`<tr><td>DCP ${i+1}</td><td>${esc(x.depth)} m</td><td>${esc(x.note)}</td></tr>`).join("")}</table>`:""}` : "";
+  /* Appendix C. One log per borehole: 300 mm rows where readings were taken,
+     one row per layer where they were not (a hole logged before readings
+     existed, or a test pit), so an old report does not gain empty rows. Then
+     one DCP sheet for every test on the job, five to a table. */
+  const bhLog = (b,i) => {
+    const term=termDepth(b);
+    const meta=[`Method: ${esc(b.method)||"not recorded"}`,
+      `Terminated at ${fmtDepth(term)} m${b.termReason?` (${esc(b.termReason).toLowerCase()})`:""}`,
+      `Groundwater: ${esc(b.water)}${b.waterDepth?` at ${esc(b.waterDepth)} m`:""}`,
+      b.rl?`RL ${esc(b.rl)} m`:"",
+      `Logged ${dt(d.fieldDate)}${d.operator?` by ${esc(d.operator)}`:""}`].filter(Boolean).join(" · ");
+    const endRow = cols => `<tr><td colspan="${cols}"><i>Borehole terminated at ${fmtDepth(term)} m below ground level${b.termReason?`: ${esc(b.termReason).toLowerCase()}`:""}</i></td></tr>`;
+    const descOf = L => layerStructured(L) ? layerLine(L,true) : L.desc;
+    const symOf  = L => layerStructured(L) ? layerSymbol(L) : L.uscs;
+    let table;
+    if(hasReadings(b)){
+      const rows=log300(b);
+      table=`<table class="borelog"><tr><th style="width:14%">Depth (m)</th><th style="width:9%">Class</th><th>Description</th><th style="width:15%">PP (kPa)</th><th style="width:10%">DCP blows</th></tr>
+       ${rows.map(row=>`<tr><td>${fmtDepth(row.from)} – ${fmtDepth(row.to)}</td>
+         <td>${row.layers.map(L=>esc(symOf(L))).filter(Boolean).join("<br>")}</td>
+         <td>${row.layers.map(L=>`${num(L.from)!=null && Math.abs(num(L.from)-row.from)>1e-9?`<i>${fmtDepth(num(L.from))} m:</i> `:""}${esc(descOf(L))}`).join("<br>")}${row.water!=null?` <span class="gw">▽ ${fmtDepth(row.water)} m</span>`:""}</td>
+         <td>${row.pp.map(esc).join(", ")}</td><td>${esc(row.dcp)}</td></tr>`).join("")}
+       ${endRow(5)}</table>`;
+    } else {
+      table=`<table class="borelog"><tr><th style="width:18%">Depth (m)</th><th style="width:12%">Class</th><th>Description</th></tr>
+       ${b.layers.length?b.layers.map(L=>`<tr><td>${esc(L.from)} – ${esc(L.to)}</td><td>${esc(symOf(L))}</td><td>${esc(descOf(L))}</td></tr>`).join("")
+         :`<tr><td colspan="3">No layers logged</td></tr>`}
+       ${endRow(3)}</table>`;
+    }
+    return `<h3>Borehole log BH${i+1}</h3><p><small>${meta}</small></p>${table}`;
+  };
+  const dcpSheet = tests => {
+    /* Five tests to a table, every table padded to five columns so the
+       sheets line up; the remarks and equipment close the last table rather
+       than floating as a block the paginator may carry to a page of its own. */
+    const chunks=[]; for(let i=0;i<tests.length;i+=5) chunks.push(tests.slice(i,i+5));
+    const pad = {label:"", location:"", rl:"", blows:[], refusal:null, remark:"", pad:true};
+    const deepOf = t => Math.max(lastFilled(t.blows)*0.1, 0);
+    return `<h3>Dynamic cone penetration test results (${AS1726.dcp.ref})</h3>
+     ${chunks.map((ch,ci)=>{
+       while(ch.length<5) ch.push(pad);
+       const cell=f=>ch.map(f).join("");
+       const nRows=Math.max(0,...ch.map(t=>Math.ceil(deepOf(t)/0.3-1e-9)));
+       const last = ci===chunks.length-1;
+       return `<table class="dcpsheet">
+        <tr>${cell(t=>`<th colspan="2">${esc(t.label)}</th>`)}</tr>
+        <tr>${cell(t=>`<td class="note" colspan="2">${t.pad?"":`${esc(t.location)}<br>RL: ${esc(t.rl)||"—"}`}</td>`)}</tr>
+        <tr>${cell(t=>t.pad?`<td></td><td></td>`:`<th>Depth (m)</th><th>Blows</th>`)}</tr>
+        ${Array.from({length:nRows},(_,k)=>`<tr>${cell(t=>{
+          const from=Math.round(k*300)/1000, deep=deepOf(t);
+          if(from>=deep-1e-9) return `<td></td><td></td>`;
+          return `<td>${fmtDepth(from)} – ${fmtDepth(Math.min(from+0.3,deep))}</td><td>${esc(sumBlows(t.blows.slice(k*3,k*3+3)))}</td>`; })}</tr>`).join("")}
+        <tr>${cell(t=>`<td class="note" colspan="2">${t.pad?"":(esc(dcpSummary(t))||"No result recorded")}</td>`)}</tr>
+        ${last?`<tr><td class="note" colspan="6"><b>Remarks:</b> ${nl(d.dcpRemarks)||"None."}</td>
+         <td class="note" colspan="4">Hammer ${AS1726.dcp.mass}, drop ${AS1726.dcp.drop}, rod ${AS1726.dcp.rod}. Test procedure ${AS1726.dcp.ref}.
+          Blows per 300&nbsp;mm, recorded per 100&nbsp;mm. R = refusal, hammer bouncing.</td></tr>`:""}
+       </table>`; }).join("")}`;
+  };
+  const BORELOG_HTML = (r.boreholes.length||dcpTests.length) ? `
+    ${r.boreholes.map(bhLog).join("")}
+    ${r.boreholes.length && d.bhRemarks ? `<p><b>Remarks:</b> ${nl(d.bhRemarks)}</p>` : ""}
+    ${dcpTests.length ? dcpSheet(dcpTests) : ""}` : "";
 
   /* Fixed appendix scheme: A site plans · B site photos · C bore logs/DCP · D information sheets */
   const apps=[];
