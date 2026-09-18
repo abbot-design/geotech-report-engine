@@ -56,7 +56,7 @@ test.describe('Backward compatibility', () => {
     await page.click('button[data-open]');
     await page.waitForSelector('#view-editor:not([hidden])');
 
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await expect(page.locator('input[data-bh="0"][data-f="waterDepth"]')).toHaveValue('');
 
     const html = await openPreview(page);

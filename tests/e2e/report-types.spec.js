@@ -73,27 +73,25 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
     await newReport(page, 'classification');
     await fillCommon(page);
 
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.fill('#f_fieldDate', '2026-08-01');
     await page.click('#addbh');
     await page.selectOption('select[data-bh="0"][data-f="method"]', 'Push tube (rig)');
     await page.fill('input[data-bh="0"][data-f="depth"]', '1.5');
-    await page.selectOption('select[data-bh="0"][data-f="water"]', 'E = encountered');
+    await page.selectOption('select[data-bh="0"][data-f="water"]', 'Water level observed');
     await page.fill('input[data-bh="0"][data-f="waterDepth"]', '2.4');
-    await page.click('[data-addlayer="0"]');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="from"]', '0');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="to"]', '1.5');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="uscs"]', 'CI');
-    await page.fill(
-      'input[data-bh="0"][data-layer="0"][data-f="desc"]',
-      'Sandy CLAY, red-brown, moist, stiff; residual'
-    );
+    // The first layer starts from the table, at 0.0 m; its class is an AS 1726
+    // symbol and its description is the engineer's own words.
+    await page.click('[data-startlayer="0:0"]');
+    await page.selectOption('select[data-bh="0"][data-layer="0"][data-f="uscs"]', 'CI');
+    await page.fill('input[data-bh="0"][data-layer="0"][data-f="desc"]', 'red-brown');
+    await page.selectOption('select[data-bh="0"][data-layer="0"][data-f="consistency"]', 'Stiff');
 
-    await expect(page.locator('label:text-is("Class")')).toHaveCount(1);
-    await expect(page.locator('label:text-is("USCS")')).toHaveCount(0);
+    await expect(page.locator('th:has-text("Class")')).toHaveCount(1);
+    await expect(page.locator('th:has-text("USCS")')).toHaveCount(0);
     await expect(
       page.locator('fieldset:has(legend:text-is("Boreholes / test pits")) p.hint')
-    ).toContainText('AS 1726 layer order');
+    ).toContainText('One row per 100 mm');
 
     await gotoTab(page, 'Classification');
     await page.selectOption('#f_siteClass', 'M');
@@ -121,7 +119,8 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
     expect(html).toContain('CSIRO 2024');
     expect(html).not.toContain('BTF-18');
     expect(html).not.toContain('GeoGuide'); // no hazards commentary
-    expect(html).toContain('E = encountered @ 2.4 m');
+    expect(html).toContain('Water level observed @ 2.4 m');
+    expect(html, 'the layer prints composed to AS 1726 in Appendix C').toContain('CI CLAY, medium plasticity, red-brown; St.');
     expect(html).toContain('>Class<');
     expect(html).not.toContain('>USCS<');
   });
@@ -132,12 +131,12 @@ test.describe('Comprehensive with Fills recommendation + hazards commentary', ()
     await newReport(page, 'comprehensive');
     await fillCommon(page);
 
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.fill('#f_fieldDate', '2026-08-01');
     await page.click('#addbh');
     await page.selectOption('select[data-bh="0"][data-f="method"]', 'Push tube (rig)');
     await page.fill('input[data-bh="0"][data-f="depth"]', '3');
-    await page.selectOption('select[data-bh="0"][data-f="water"]', 'NE = not encountered');
+    await page.selectOption('select[data-bh="0"][data-f="water"]', 'Not encountered');
 
     await gotoTab(page, 'Classification');
     await page.selectOption('#f_siteClass', 'H1');
@@ -170,9 +169,9 @@ test.describe('borehole and layer rows', () => {
     page.on('pageerror', err => errors.push(err.message));
 
     await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-addlayer="0"]');
+    await page.click('[data-startlayer="0:0"]');
     await page.click('[data-dellayer="0:0"]');
     await page.click('[data-delbh="0"]');
 
