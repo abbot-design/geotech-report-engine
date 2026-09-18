@@ -36,10 +36,11 @@ test.describe('field editor', () => {
     await newReport(page, 'classification');
     await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-startlayer="0:0"]');
     const pickers = () => page.$$eval('select[data-bh="0"][data-layer="0"]', els => els.map(s => s.dataset.f));
 
-    await page.selectOption('select[data-bh="0"][data-layer="0"][data-f="uscs"]', 'SC');
+    // Every row has real controls; a class on an empty row starts the layer there.
+    await expect(page.locator('details[data-bhcard="0"] tbody select[data-f="uscs"]')).toHaveCount(10);
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'SC');
     expect(await pickers()).toEqual(['uscs', 'prefix', 'moisture', 'density', 'origin']);
     await expect(page.locator('select[data-bh="0"][data-layer="0"][data-f="moisture"] option')).toContainText(['Dry', 'Moist', 'Wet']);
 
@@ -62,10 +63,9 @@ test.describe('field editor', () => {
     await newReport(page, 'classification');
     await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-startlayer="0:0"]');
-    const groups = await page.$$eval('select[data-bh="0"][data-layer="0"][data-f="uscs"] optgroup', els => els.map(g => g.label));
+    const groups = await page.$$eval('select[data-bh="0"][data-newlayer="0"][data-f="uscs"] optgroup', els => els.map(g => g.label));
     expect(groups).toEqual(['Soil', 'Rock', 'Not classified']);
-    const labels = await page.$$eval('select[data-bh="0"][data-layer="0"][data-f="uscs"] option', els => els.map(o => o.textContent));
+    const labels = await page.$$eval('select[data-bh="0"][data-newlayer="0"][data-f="uscs"] option', els => els.map(o => o.textContent));
     expect(labels).toContain('SC clayey SAND');
     expect(labels).toContain('Pt PEAT');
     expect(labels).toContain('COBBLES and BOULDERS');
@@ -101,6 +101,31 @@ test.describe('field editor', () => {
     await page.focus('input[data-dcp="0"][data-cell="blows"][data-k="60"]');
     await page.keyboard.press('Enter');
     await expect(page.locator('input[data-dcp="0"][data-cell="blows"][data-k="61"]')).toBeFocused();
+  });
+
+  test('a description typed on an empty row starts a layer there, with the caret kept', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Boreholes');
+    await page.click('#addbh');
+    await page.type('input[data-bh="0"][data-newlayer="4"][data-f="desc"]', 'grey');
+    await expect(page.locator('input[data-bh="0"][data-layer="0"][data-f="desc"]')).toHaveValue('grey');
+    await expect(page.locator('input[data-bh="0"][data-layer="0"][data-f="desc"]')).toBeFocused();
+    expect(await page.evaluate(() => report().boreholes[0].layers[0].from)).toBe('0.4');
+  });
+
+  test('an added metre can be taken back while it is empty', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Boreholes');
+    await page.click('#addbh');
+    await expect(page.locator('[data-droprows="0"]')).toBeHidden();
+    await page.click('[data-addrows="0"]');
+    await expect(page.locator('details[data-bhcard="0"] tbody tr')).toHaveCount(20);
+    await expect(page.locator('[data-droprows="0"]')).toBeVisible();
+    await page.click('[data-droprows="0"]');
+    await expect(page.locator('details[data-bhcard="0"] tbody tr')).toHaveCount(10);
+    await page.click('[data-addrows="0"]');
+    await page.fill('input[data-bh="0"][data-cell="pp"][data-k="15"]', '200');
+    await expect(page.locator('[data-droprows="0"]'), 'not offered once the metre holds a reading').toBeHidden();
   });
 
   test('info icons open a panel on tap and say the description is the engineer\'s', async ({ page }) => {

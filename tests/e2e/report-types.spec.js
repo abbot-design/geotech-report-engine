@@ -82,8 +82,7 @@ test.describe('Site Classification + Wind — Foundations present, groundwater d
     await page.fill('input[data-bh="0"][data-f="waterDepth"]', '2.4');
     // The first layer starts from the table, at 0.0 m; its class is an AS 1726
     // symbol and its description is the engineer's own words.
-    await page.click('[data-startlayer="0:0"]');
-    await page.selectOption('select[data-bh="0"][data-layer="0"][data-f="uscs"]', 'CI');
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'CI');
     await page.fill('input[data-bh="0"][data-layer="0"][data-f="desc"]', 'red-brown');
     await page.selectOption('select[data-bh="0"][data-layer="0"][data-f="consistency"]', 'Stiff');
 
@@ -171,7 +170,7 @@ test.describe('borehole and layer rows', () => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-startlayer="0:0"]');
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'CI');
     await page.click('[data-dellayer="0:0"]');
     await page.click('[data-delbh="0"]');
 

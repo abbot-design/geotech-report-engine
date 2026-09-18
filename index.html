@@ -220,12 +220,14 @@ details.card.bh>summary span,details.card.dcp>summary span{font-weight:600}
 .log td.rd,.log th.rd{width:4.4rem}
 .log input.cell{width:100%;text-align:center;padding:.3rem .15rem;min-height:var(--tap);margin:0}
 .log td.cl{width:12rem}.log td.cl select{width:100%;margin:0}
-.log td.ds>div{display:flex;gap:.3rem;align-items:center}
-.log td.ds input{flex:1;min-width:0;margin:0}
-.log button.x{padding:0 .55rem;min-width:2.6rem;margin:0;flex:none}
-.log td.same button.quiet{color:var(--ink-soft);text-decoration:none;padding:.3rem .4rem;font-size:.86rem}
-.log tr.mat td{border-bottom:0}
+.log td.ds input{width:100%;min-width:0;margin:0}
+.log td.x,.log th.x{width:2.8rem;padding-left:.15rem;padding-right:0}
+.log button.x{padding:0 .55rem;min-width:2.6rem;margin:0}
+.log tr.mat.haspk td{border-bottom:0}
 .log tr.pk td{background:var(--paper);padding:.45rem .6rem .55rem;border-bottom:2px solid var(--line-strong)}
+.log optgroup{font-weight:700;color:var(--ink);font-style:normal}
+.log tr:not(.mat) td.cl select,.log tr:not(.mat) td.ds input{color:var(--ink)}
+.rowhead.cardhead{margin:.9rem 0 .7rem}
 .log .pickers>div{min-width:150px;flex:1}
 .log .pickers select{margin:0}
 .reads{margin:.45rem 0 0;font-size:.86rem;color:var(--ink-soft)}.reads b{color:var(--ink);font-weight:600}
@@ -250,12 +252,13 @@ p.tip{font-size:.88rem;line-height:1.45;background:var(--paper);border:1px solid
 @media (max-width:560px){
   .log,.log tbody,.log tr.pk,.log tr.pk td{display:block}
   .log thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-  .log tbody tr:not(.pk){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.4rem 3.4rem;gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
-  .log tbody tr.mat{grid-template-areas:"dp cl pp dcp" "ds ds ds ds";border-bottom:0}
+  .log tbody tr:not(.pk){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.2rem 3.2rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
+  .log tbody tr.mat.haspk{border-bottom:0}
+  .log td.x{grid-area:x;width:auto}
   .log td{display:block;border:0;padding:0;width:auto}
   .log td.dp,.log td.cl,.log td.rd{width:auto}
-  .log tr.mat td.dp{grid-area:dp}.log tr.mat td.cl{grid-area:cl}.log tr.mat td.ds{grid-area:ds}
-  .log tr.mat td.pp{grid-area:pp}.log tr.mat td.dcp{grid-area:dcp}
+  .log td.dp{grid-area:dp}.log td.cl{grid-area:cl}.log td.ds{grid-area:ds}
+  .log td.pp{grid-area:pp}.log td.dcp{grid-area:dcp}
   .log input.cell{padding:.3rem .05rem;font-size:.9rem}
   .log input.cell::placeholder{color:var(--ink-soft);font-size:.7rem}
   .log tr.pk td{padding:.4rem .5rem .5rem}
@@ -1890,6 +1893,14 @@ const INFO_ICON = `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="
    it in place. */
 const infoBtn = (key, id, what) => `<button type="button" class="info" data-tip="${id}" aria-controls="${id}" aria-expanded="false" aria-label="About ${esc(what)}">${INFO_ICON}</button>`;
 const tipPanel = (key, id) => `<p class="tip" id="${id}" hidden>${esc(TIPS[key])}</p>`;
+/* A field with an info icon, laid out exactly like F() lays out every other
+   field (label, control, hint slot) so the icon never shifts the control. */
+const infoField = (key, id, label, what, control) => `<div><label for="${id}-in" class="withinfo">${label}${infoBtn(key,id,what)}</label>${control.replace(/<(input|select)/, `<$1 id="${id}-in"`)}${tipPanel(key,id)}</div>`;
+/* Every card field is label-then-control, as F() lays fields out, so the
+   grid's label row is the same height for all of them. */
+let cardFieldN = 0;
+const cardField = (label, control, cls) => { const id=`cf${++cardFieldN}`;
+  return `<div${cls?` class="${cls}"`:""}><label for="${id}">${label}</label>${control.replace(/<(input|select)/, `<$1 id="${id}"`)}</div>`; };
 
 const WATER_OPTIONS = ["Not encountered","Seepage","Water level observed"];
 /* Reports saved before the vocabulary change hold "NE = not encountered" and
@@ -1938,6 +1949,8 @@ function bhRows(b){
   (b.layers||[]).forEach(L=>{ const f=num(L.from); if(f!=null) deep=Math.max(deep, Math.floor(f*10+1e-9)+1); });
   return Math.max(b.rows||0, 10, Math.ceil(deep/10)*10);
 }
+const metreUsed = (b,k) => lastFilled(b.pp)>k || lastFilled(b.dcp)>k || termDepth(b)>k*0.1+1e-9 ||
+  (b.layers||[]).some(L=>(num(L.from)??-1)>=k*0.1-1e-9);
 const bhSummary = (b,i) => [`BH${i+1}`, b.method, `${fmtDepth(termDepth(b))} m`, b.termReason?b.termReason.toLowerCase():""].filter(Boolean).join(" · ");
 const dcpCardSummary = (x,i) => { const rd = refusalDepth(x.blows||[]) ?? num(x.depth);
   return [`DCP ${i+1}`, rd!=null?`refusal at ${fmtDepth(rd)} m`:"", x.location||""].filter(Boolean).join(" · "); };
@@ -1953,30 +1966,35 @@ function renderBoreholes(){
     if(i===openBh) card.open=true;
     card.addEventListener("toggle", onCardToggle);
     card.innerHTML=`<summary><span data-bhsum="${i}">${esc(bhSummary(b,i))}</span></summary>
-     <div class="rowhead"><span></span><button type="button" class="danger" data-delbh="${i}">Remove BH${i+1}</button></div>
+     <div class="rowhead cardhead"><span></span><button type="button" class="danger" data-delbh="${i}">Remove BH${i+1}</button></div>
      <div class="grid">
-      <div><label>Method<select data-bh="${i}" data-f="method">
+      ${cardField("Method",`<select data-bh="${i}" data-f="method">
         ${["","Push tube (rig)","Push tube (hand)","Hand auger","Machine auger","Test pit"].map(m=>`<option${b.method===m?" selected":""}>${m}</option>`).join("")}
-       </select></label></div>
-      <div><label>Groundwater<select data-bh="${i}" data-f="water">${WATER_OPTIONS.map(m=>`<option${waterTerm(b.water)===m?" selected":""}>${m}</option>`).join("")}</select></label></div>
-      ${seen?`<div><label>Water depth (m)<input data-bh="${i}" data-f="waterDepth" inputmode="decimal" value="${esc(b.waterDepth||"")}" placeholder="0.5"></label></div>`:""}
-      <div><label>Terminated because<select data-bh="${i}" data-f="termReason"><option value="">Select…</option>${AS1726.termReasons.map(t=>`<option${b.termReason===t?" selected":""}>${t}</option>`).join("")}</select></label></div>
-      <div><label>Terminated at (m)<input data-bh="${i}" data-f="depth" inputmode="decimal" value="${esc(b.depth||"")}" placeholder="${fmtDepth(term)} from the log"></label></div>
-      <div><label class="withinfo">RL (m)${infoBtn("rl",`tip-rl-bh${i}`,"RL")}<input data-bh="${i}" data-f="rl" inputmode="decimal" value="${esc(b.rl||"")}"></label>${tipPanel("rl",`tip-rl-bh${i}`)}</div>
+       </select>`)}
+      ${cardField("Groundwater",`<select data-bh="${i}" data-f="water">${WATER_OPTIONS.map(m=>`<option${waterTerm(b.water)===m?" selected":""}>${m}</option>`).join("")}</select>`)}
+      ${seen?cardField("Water depth (m)",`<input data-bh="${i}" data-f="waterDepth" inputmode="decimal" value="${esc(b.waterDepth||"")}" placeholder="0.5">`):""}
+      ${cardField("Terminated because",`<select data-bh="${i}" data-f="termReason"><option value="">Select…</option>${AS1726.termReasons.map(t=>`<option${b.termReason===t?" selected":""}>${t}</option>`).join("")}</select>`)}
+      ${cardField("Terminated at (m)",`<input data-bh="${i}" data-f="depth" inputmode="decimal" value="${esc(b.depth||"")}" placeholder="${fmtDepth(term)} from the log">`)}
+      ${infoField("rl",`tip-rl-bh${i}`,"RL (m)","RL",`<input data-bh="${i}" data-f="rl" inputmode="decimal" value="${esc(b.rl||"")}">`)}
      </div>
      <div class="logwrap"><table class="log" aria-label="Borehole BH${i+1} log, one row per 100 mm">
-      <thead><tr><th class="dp">Depth (m)</th><th class="cl">Class</th><th><span class="withinfo">Description${infoBtn("desc",`tip-desc-bh${i}`,"the description")}</span></th><th class="rd">PP kPa</th><th class="rd">DCP</th></tr>
-       <tr class="tiprow"><td colspan="5">${tipPanel("desc",`tip-desc-bh${i}`)}</td></tr></thead>
+      <thead><tr><th class="dp">Depth (m)</th><th class="cl">Class</th><th><span class="withinfo">Description${infoBtn("desc",`tip-desc-bh${i}`,"the description")}</span></th><th class="rd">PP kPa</th><th class="rd">DCP</th><th class="x"></th></tr>
+       <tr class="tiprow"><td colspan="6">${tipPanel("desc",`tip-desc-bh${i}`)}</td></tr></thead>
       <tbody>${Array.from({length:rows},(_,k)=>{
-        const L=layerAt(b,k), j=L?b.layers.indexOf(L):-1;
-        const depthCell=`<td class="dp">${fmtDepth(k*0.1)}–${fmtDepth((k+1)*0.1)}</td>`;
-        const cell=(f)=>`<td class="rd ${f}"><input data-bh="${i}" data-cell="${f}" data-k="${k}" class="cell" value="${esc((b[f]||[])[k]||"")}" autocomplete="off" enterkeyhint="next" placeholder="${f==="pp"?"PP":"DCP"}" aria-label="${f==="pp"?"PP kPa":"DCP blows"} at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td>`;
-        if(!L) return `<tr>${depthCell}<td colspan="2" class="same"><button type="button" class="quiet" data-startlayer="${i}:${k}" aria-label="New layer from ${fmtDepth(k*0.1)} m">${k===0&&!b.layers.length?"Describe the first layer":"〃"}</button></td>${cell("pp")}${cell("dcp")}</tr>`;
-        return `<tr class="mat">${depthCell}<td class="cl">${classSelect(`data-bh="${i}" data-layer="${j}" data-f="uscs" aria-label="Class at ${fmtDepth(num(L.from))} m"`, L.uscs)}</td>
-          <td class="ds"><div><input data-bh="${i}" data-layer="${j}" data-f="desc" value="${esc(L.desc||"")}" placeholder="fine to medium, brown" aria-label="Description at ${fmtDepth(num(L.from))} m"><button type="button" data-dellayer="${i}:${j}" class="danger x">✕<span class="sr-only"> remove layer</span></button></div></td>${cell("pp")}${cell("dcp")}</tr>
-         <tr class="pk"><td colspan="5">${pickerStrip(i,j,L)}</td></tr>`;
+        const L=layerAt(b,k), j=L?b.layers.indexOf(L):-1, at=fmtDepth(k*0.1);
+        const depthCell=`<td class="dp">${at}–${fmtDepth((k+1)*0.1)}</td>`;
+        const cell=(f)=>`<td class="rd ${f}"><input data-bh="${i}" data-cell="${f}" data-k="${k}" class="cell" value="${esc((b[f]||[])[k]||"")}" autocomplete="off" enterkeyhint="next" placeholder="${f==="pp"?"PP":"DCP"}" aria-label="${f==="pp"?"PP kPa":"DCP blows"} at ${at} to ${fmtDepth((k+1)*0.1)} m"></td>`;
+        /* A row with no layer has the same controls; filling either one
+           starts a layer at that depth. */
+        if(!L) return `<tr>${depthCell}<td class="cl">${classSelect(`data-bh="${i}" data-newlayer="${k}" data-f="uscs" aria-label="Class from ${at} m"`, "")}</td>
+          <td class="ds"><input data-bh="${i}" data-newlayer="${k}" data-f="desc" value="" placeholder="${k===0?"fine to medium, brown":"same as above"}" aria-label="Description from ${at} m"></td>${cell("pp")}${cell("dcp")}<td class="x"></td></tr>`;
+        const strip=pickerStrip(i,j,L);
+        return `<tr class="mat${strip?" haspk":""}">${depthCell}<td class="cl">${classSelect(`data-bh="${i}" data-layer="${j}" data-f="uscs" aria-label="Class at ${fmtDepth(num(L.from))} m"`, L.uscs)}</td>
+          <td class="ds"><input data-bh="${i}" data-layer="${j}" data-f="desc" value="${esc(L.desc||"")}" placeholder="fine to medium, brown" aria-label="Description at ${fmtDepth(num(L.from))} m"></td>${cell("pp")}${cell("dcp")}
+          <td class="x"><button type="button" data-dellayer="${i}:${j}" class="danger x">✕<span class="sr-only"> remove layer</span></button></td></tr>
+         ${strip?`<tr class="pk"><td colspan="6">${strip}</td></tr>`:""}`;
       }).join("")}</tbody></table></div>
-     <div class="inline logfoot"><button type="button" data-addrows="${i}">+ Add 1 m</button><span class="hint" data-bhterm="${i}">Terminated at ${fmtDepth(term)} m</span></div>
+     <div class="inline logfoot"><span><button type="button" data-addrows="${i}">+ Add 1 m</button> <button type="button" class="quiet" data-droprows="${i}"${rows>10 && !metreUsed(b,rows-10)?"":" hidden"}>Remove last metre</button></span><span class="hint" data-bhterm="${i}">Terminated at ${fmtDepth(term)} m</span></div>
      <div class="inline" style="margin-top:.6rem"><button type="button" data-bhphotobtn="${i}">📷 Add photo</button><input type="file" accept="image/*" capture="environment" data-bhphoto="${i}" hidden aria-hidden="true"></div>
      ${(b.photos||[]).length?`<div class="photos small">${b.photos.map((p,q)=>`<figure><img src="${p.dataUrl}" alt="${esc(p.caption||`BH${i+1} photo ${q+1}`)}">
        <label><span class="sr-only">Caption for BH${i+1} photo ${q+1}</span><input data-bh="${i}" data-bhcap="${q}" value="${esc(p.caption||"")}" placeholder="Spoil at 0.6 m"></label>
@@ -1994,18 +2012,18 @@ function renderDcps(){
     if(i===openDcp) card.open=true;
     card.addEventListener("toggle", onCardToggle);
     card.innerHTML=`<summary><span data-dcpsum="${i}">${esc(dcpCardSummary(x,i))}</span></summary>
-     <div class="rowhead"><span></span><button type="button" class="danger" data-deldcp="${i}">Remove DCP ${i+1}</button></div>
+     <div class="rowhead cardhead"><span></span><button type="button" class="danger" data-deldcp="${i}">Remove DCP ${i+1}</button></div>
      <div class="grid">
-      <div><label>Location<input data-dcp="${i}" data-f="location" value="${esc(x.location||"")}" placeholder="Refer to site plan"></label></div>
-      <div><label class="withinfo">RL (m)${infoBtn("rl",`tip-rl-dcp${i}`,"RL")}<input data-dcp="${i}" data-f="rl" inputmode="decimal" value="${esc(x.rl||"")}"></label>${tipPanel("rl",`tip-rl-dcp${i}`)}</div>
-      <div><label>Refusal depth (m)<input data-dcp="${i}" data-f="depth" inputmode="decimal" value="${esc(x.depth||"")}" placeholder="${refusalDepth(blows)!=null?fmtDepth(refusalDepth(blows))+" from the blows":"from the blows"}"></label></div>
-      <div class="wide"><label class="withinfo">Remark${infoBtn("remark",`tip-rem-dcp${i}`,"the remark")}<input data-dcp="${i}" data-f="note" value="${esc(x.note||"")}" placeholder="Bouncing on bedrock. Brown sand on dry tip."></label>${tipPanel("remark",`tip-rem-dcp${i}`)}</div>
+      ${cardField("Location",`<input data-dcp="${i}" data-f="location" value="${esc(x.location||"")}" placeholder="Refer to site plan">`)}
+      ${infoField("rl",`tip-rl-dcp${i}`,"RL (m)","RL",`<input data-dcp="${i}" data-f="rl" inputmode="decimal" value="${esc(x.rl||"")}">`)}
+      ${cardField("Refusal depth (m)",`<input data-dcp="${i}" data-f="depth" inputmode="decimal" value="${esc(x.depth||"")}" placeholder="${refusalDepth(blows)!=null?fmtDepth(refusalDepth(blows))+" from the blows":"from the blows"}">`)}
+      ${infoField("remark",`tip-rem-dcp${i}`,"Remark","the remark",`<input data-dcp="${i}" data-f="note" value="${esc(x.note||"")}" placeholder="Bouncing on bedrock. Brown sand on dry tip.">`).replace("<div>",'<div class="wide">')}
      </div>
      <div class="logwrap"><table class="log ladder" aria-label="DCP ${i+1} blows, one row per 100 mm">
       <thead><tr><th class="dp">Depth (m)</th><th class="rd">Blows</th></tr></thead>
       <tbody>${Array.from({length:rows},(_,k)=>`<tr><td class="dp">${fmtDepth(k*0.1)}–${fmtDepth((k+1)*0.1)}</td>
         <td class="rd"><input data-dcp="${i}" data-cell="blows" data-k="${k}" class="cell" value="${esc(blows[k]||"")}" autocomplete="off" enterkeyhint="next" aria-label="Blows at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td></tr>`).join("")}</tbody></table></div>
-     <div class="inline logfoot"><button type="button" data-adddcprows="${i}">+ Add 1 m</button><span class="hint">Type R after the last blow count at refusal</span></div>`;
+     <div class="inline logfoot"><span><button type="button" data-adddcprows="${i}">+ Add 1 m</button>${rows>10 && lastFilled(blows)<=rows-10?` <button type="button" class="quiet" data-dropdcprows="${i}">Remove last metre</button>`:""}</span><span class="hint">Type R after the last blow count at refusal</span></div>`;
     el.appendChild(card);
   });
 }
@@ -2027,6 +2045,8 @@ function refreshBh(i){
   const b=report().boreholes[i]; if(!b) return;
   const s=document.querySelector(`[data-bhsum="${i}"]`); if(s) s.textContent=bhSummary(b,i);
   const t=document.querySelector(`[data-bhterm="${i}"]`); if(t) t.textContent=`Terminated at ${fmtDepth(termDepth(b))} m`;
+  const rows=bhRows(b), drop=document.querySelector(`[data-droprows="${i}"]`);
+  if(drop) drop.hidden = !(rows>10 && !metreUsed(b,rows-10));
   b.layers.forEach((L,j)=>{ const el=document.querySelector(`[data-reads="${i}:${j}"]`); if(el) el.textContent=layerLine(L,false); });
 }
 function refreshDcp(i){
@@ -3002,14 +3022,13 @@ document.addEventListener("click",e=>{
   if(t.dataset.delbh!==undefined){ const i=+t.dataset.delbh, gone=report().boreholes.splice(i,1)[0];
     saveDb(); renderBoreholes(); renderTabs();
     noteUndo(`BH${i+1} removed.`, ()=>report().boreholes.splice(i,0,gone)); }
-  if(t.dataset.startlayer){ const [i,k]=t.dataset.startlayer.split(":").map(Number); const b=report().boreholes[i];
-    b.layers.push({from:fmtDepth(k*0.1),to:"",uscs:"",desc:"",v:2}); normaliseLayers(b); saveDb();
-    const j=b.layers.findIndex(L=>Math.abs((num(L.from)??-1)-k*0.1)<1e-9);
-    rerenderKeeping(renderBoreholes, `select[data-bh="${i}"][data-layer="${j}"][data-f="uscs"]`); }
   if(t.dataset.dellayer){ const [i,j]=t.dataset.dellayer.split(":").map(Number); const b=report().boreholes[i];
     const gone=b.layers.splice(j,1)[0]; normaliseLayers(b); saveDb(); renderBoreholes();
     noteUndo(`Layer at ${esc(gone.from)} m of BH${i+1} removed.`, ()=>{ b.layers.splice(j,0,gone); normaliseLayers(b); }); }
   if(t.dataset.addrows!==undefined){ const b=report().boreholes[+t.dataset.addrows]; b.rows=bhRows(b)+10; saveDb(); renderBoreholes(); }
+  if(t.dataset.droprows!==undefined){ const b=report().boreholes[+t.dataset.droprows]; b.rows=Math.max(10,bhRows(b)-10); saveDb(); renderBoreholes(); }
+  if(t.dataset.dropdcprows!==undefined){ const x=report().dcps[+t.dataset.dropdcprows];
+    x.rows=Math.max(10,Math.max(x.rows||0,10,Math.ceil(lastFilled(x.blows||[])/10)*10)-10); saveDb(); renderDcps(); }
   if(t.dataset.bhphotobtn!==undefined){ const f=document.querySelector(`input[data-bhphoto="${t.dataset.bhphotobtn}"]`); if(f) f.click(); }
   if(t.dataset.delbhphoto){ const [i,q]=t.dataset.delbhphoto.split(":").map(Number); const b=report().boreholes[i];
     const gone=b.photos.splice(q,1)[0]; saveDb(); renderBoreholes();
@@ -3105,6 +3124,16 @@ function onFieldEdit(e){
         rerenderKeeping(renderBoreholes, `[data-bh="${i}"][data-cell="${el.dataset.cell}"][data-k="${k}"]`); }
       refreshTabsSoon(); return; }
     if(el.dataset.bhcap!==undefined){ b.photos[+el.dataset.bhcap].caption=el.value; saveDb(); return; }
+    if(el.dataset.newlayer!==undefined){
+      const k=+el.dataset.newlayer; if(!el.value) return;
+      /* input and change both arrive for one edit; the second must find the
+         layer the first one made, not make another. */
+      let L=layerAt(b,k);
+      if(!L){ L={from:fmtDepth(k*0.1),to:"",uscs:"",desc:"",v:2}; b.layers.push(L); }
+      L[el.dataset.f]=el.value; normaliseLayers(b); saveDb();
+      const j=b.layers.indexOf(L), tag=el.dataset.f==="uscs"?"select":"input";
+      rerenderKeeping(renderBoreholes, `${tag}[data-bh="${i}"][data-layer="${j}"][data-f="${el.dataset.f}"]`);
+      refreshTabsSoon(); return; }
     if(el.dataset.layer!==undefined){
       const j=+el.dataset.layer, L=b.layers[j], f=el.dataset.f;
       if(f==="uscs"){

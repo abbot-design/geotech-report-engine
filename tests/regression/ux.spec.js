@@ -373,8 +373,7 @@ test.describe('destructive row actions are recoverable', () => { // review item 
     await page.click('details[data-bhcard="0"] > summary');
     await page.selectOption('select[data-bh="0"][data-f="method"]', 'Hand auger');
     await page.fill('input[data-bh="0"][data-f="depth"]', '1.2');
-    await page.click('[data-startlayer="0:0"]');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="desc"]', 'Sandy CLAY, brown, stiff');
+    await page.fill('input[data-bh="0"][data-newlayer="0"][data-f="desc"]', 'Sandy CLAY, brown, stiff');
     await page.click('details[data-bhcard="1"] > summary');
     await page.selectOption('select[data-bh="1"][data-f="method"]', 'Test pit');
 
@@ -395,10 +394,8 @@ test.describe('destructive row actions are recoverable', () => { // review item 
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-startlayer="0:0"]');
-    await page.click('[data-startlayer="0:3"]');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="desc"]', 'Layer one');
-    await page.fill('input[data-bh="0"][data-layer="1"][data-f="desc"]', 'Layer two');
+    await page.fill('input[data-bh="0"][data-newlayer="0"][data-f="desc"]', 'Layer one');
+    await page.fill('input[data-bh="0"][data-newlayer="3"][data-f="desc"]', 'Layer two');
     await page.click('[data-dellayer="0:0"]');
     await page.click('.toast button.undo');
     const layers = await page.evaluate(() => report().boreholes[0].layers.map(l => l.desc));
@@ -485,9 +482,9 @@ test.describe('row editor controls line up with their fields', () => { // review
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-startlayer="0:0"]');
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'SC');
     const r = await page.evaluate(() => {
-      const row = document.querySelector('[data-dellayer="0:0"]').closest('td');
+      const row = document.querySelector('[data-dellayer="0:0"]').closest('tr');
       const btn = row.querySelector('[data-dellayer="0:0"]').getBoundingClientRect();
       const inp = row.querySelector('input[data-f="desc"]').getBoundingClientRect();
       return { top: btn.top - inp.top, bottom: btn.bottom - inp.bottom };

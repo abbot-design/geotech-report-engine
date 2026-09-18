@@ -12,7 +12,7 @@ test.describe('screen-reader-only text', () => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-startlayer="0:0"]');
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'SC');
 
     const srSpan = page.locator('[data-dellayer="0:0"] .sr-only');
     await expect(srSpan).toHaveCount(1);
