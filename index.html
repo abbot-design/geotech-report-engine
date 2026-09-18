@@ -238,13 +238,15 @@ details.card input[aria-invalid="true"]{border-color:#cc2222;box-shadow:0 0 0 1p
 /* The DCP ladder: ten rows (one metre) to a column, columns across the card,
    so a 6 m test reads like the printed sheet instead of a 60-row scroll. */
 .log.ladder{width:auto;max-width:none}
-.log.ladder thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.log.ladder tbody{display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);grid-auto-columns:max-content;column-gap:1.75rem}
-.log.ladder tbody tr{display:grid;grid-template-columns:4.6rem 5.4rem 2.6rem;grid-template-areas:"dp rd x" "err err err";align-items:center;column-gap:.3rem;border-bottom:1px solid var(--line);padding:.2rem 0}
+.log.ladder tbody{display:grid;grid-auto-flow:column;grid-template-rows:repeat(11,auto);grid-auto-columns:max-content;column-gap:1.75rem;row-gap:0}
+.log.ladder tbody tr{display:grid;grid-template-columns:4.4rem 6rem 2.4rem;grid-template-areas:"dp rd x" "err err err";align-items:center;column-gap:.3rem;border-bottom:1px solid var(--line);padding:.2rem 0}
+.log.ladder tbody tr.hd{border-bottom:1px solid var(--line-strong);padding:0 0 .15rem}
+.log.ladder tbody tr.hd th{display:block;border:0;padding:0 .1rem;font-size:.82rem;color:var(--ink-soft);font-weight:600}
+.log.ladder tbody tr.hd th.dp{grid-area:dp}.log.ladder tbody tr.hd th.rd{grid-area:rd}.log.ladder tbody tr.hd th.x{grid-area:x}
 .log.ladder td.dp{grid-area:dp}.log.ladder td.rd{grid-area:rd}.log.ladder td.x{grid-area:x}.log.ladder td.err{grid-area:err}
 .log td[hidden]{display:none}
-.log.ladder tbody tr:nth-child(10n+1){border-top:1px solid var(--line-strong)}
 .log.ladder td{display:block;border:0;padding:0;width:auto}
+.log.ladder td.rd input.cell{width:100%}
 .log.ladder td.err .fielderr{margin:.15rem 0 .1rem}
 .logfoot{margin-top:.6rem;align-items:center;justify-content:space-between}
 .logfoot .hint{margin:0}
@@ -268,8 +270,7 @@ p.tip{font-size:.88rem;line-height:1.45;background:var(--paper);border:1px solid
   .log thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   .log tr.msg,.log tr.msg td{display:block}
   .log.ladder tbody{grid-auto-flow:row;grid-template-rows:none;grid-auto-columns:auto}
-  .log.ladder tbody tr{grid-template-columns:4.4rem minmax(0,1fr) 2.4rem;grid-template-areas:"dp rd x" "err err err"}
-  .log.ladder tbody tr:nth-child(10n+1){border-top:0}
+  .log.ladder tbody tr.hd:not(:first-child){display:none}
   .log:not(.ladder) tbody tr:not(.pk):not(.msg){display:grid;grid-template-columns:4.2rem minmax(0,1fr) 3rem 3rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .2rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
   .log button.x{min-width:2.4rem;width:2.4rem;padding:0;box-sizing:border-box}
   .log tbody tr.mat.haspk{border-bottom:0}
@@ -1951,6 +1952,8 @@ function pickerStrip(i,j,L){
   if(!parts.length) return "";
   return `<div class="inline pickers">${parts.join("")}</div><p class="reads">Reads as: <b data-reads="${i}:${j}">${esc(layerLine(L,false))}</b></p>`;
 }
+const layerEmpty = L => !L.uscs && !(L.desc||"").trim() &&
+  !["prefix","moisture","consistency","density","weathering","strength","origin"].some(k=>L[k]);
 const layerAt = (b,k) => (b.layers||[]).find(L=>{ const f=num(L.from); return f!=null && f>=k*0.1-1e-9 && f<(k+1)*0.1-1e-9; });
 /* Layers in depth order, each running to the next one; the last runs to the
    typed termination, or as deep as the readings go, or keeps the depth it
@@ -2102,8 +2105,7 @@ function renderDcps(){
       ${infoField("remark",`tip-rem-dcp${i}`,"Remark","the remark",`<input data-dcp="${i}" data-f="note" value="${esc(x.note||"")}" placeholder="Bouncing on bedrock. Brown sand on dry tip." maxlength="200">`).replace("<div>",'<div class="wide">')}
      </div>
      <div class="logwrap"><table class="log ladder" aria-label="DCP ${i+1} blows, one row per 100 mm">
-      <thead><tr><th class="dp">Depth (m)</th><th class="rd">Blows</th><th class="x"></th></tr></thead>
-      <tbody>${Array.from({length:rows},(_,k)=>`<tr><td class="dp">${fmtDepth(k*0.1)}–${fmtDepth((k+1)*0.1)}</td>
+      <tbody>${Array.from({length:rows},(_,k)=>`${k%10===0?`<tr class="hd"><th class="dp">Depth (m)</th><th class="rd">Blows</th><th class="x"></th></tr>`:""}<tr><td class="dp">${fmtDepth(k*0.1)}–${fmtDepth((k+1)*0.1)}</td>
         <td class="rd"><input data-dcp="${i}" data-cell="blows" data-k="${k}" class="cell" value="${esc(blows[k]||"")}" autocomplete="off" enterkeyhint="next" aria-label="Blows at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td>
         <td class="x"><button type="button" data-cleardcprow="${i}:${k}" class="danger x">✕<span class="sr-only"> clear the ${fmtDepth(k*0.1)} m row</span></button></td><td class="err" hidden></td></tr>`).join("")}</tbody></table></div>
      <div class="inline logfoot"><span><button type="button" data-adddcprows="${i}">+ Add 1 m</button>${rows>10 && lastFilled(blows)<=rows-10?` <button type="button" class="quiet" data-dropdcprows="${i}">Remove last metre</button>`:""}</span><span class="hint">Type R after the last blow count at refusal</span></div>`;
@@ -3242,9 +3244,17 @@ function onFieldEdit(e){
         if(before!==(classInfo(L.uscs)||{}).kind)
           ["prefix","moisture","consistency","density","weathering","strength","origin"].forEach(k=>delete L[k]);
         saveDb();
-        if(e.type==="change") rerenderKeeping(renderBoreholes, `select[data-bh="${i}"][data-layer="${j}"][data-f="uscs"]`);
+        if(e.type==="change" && layerEmpty(L)){ b.layers.splice(j,1); normaliseLayers(b); saveDb();
+          rerenderKeeping(renderBoreholes, `select[data-bh="${i}"][data-newlayer="${Math.floor((num(L.from)??0)*10+1e-9)}"][data-f="uscs"]`); }
+        else if(e.type==="change") rerenderKeeping(renderBoreholes, `select[data-bh="${i}"][data-layer="${j}"][data-f="uscs"]`);
         else refreshBh(i);
       } else { L[f]=el.value; if(f!=="desc") L.v=2; saveDb(); refreshBh(i); }
+      /* Class and description both cleared: the layer is gone, and the hole
+         terminates where the log now says. Done on change, not on every
+         keystroke, so clearing a field to retype it does not pull the row
+         out from under the caret. */
+      if(e.type==="change" && layerEmpty(L)){ b.layers.splice(j,1); normaliseLayers(b); saveDb();
+        rerenderKeeping(renderBoreholes, `${f==="uscs"?"select":"input"}[data-bh="${i}"][data-newlayer="${Math.floor((num(L.from)??0)*10+1e-9)}"][data-f="${f}"]`); }
       refreshTabsSoon(); return; }
     const shown=bhRows(b);
     b[el.dataset.f]=el.value;

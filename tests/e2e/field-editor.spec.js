@@ -87,7 +87,7 @@ test.describe('field editor', () => {
     await newReport(page, 'classification');
     await gotoTab(page, 'DCP tests');
     await page.click('#adddcp');
-    const rows = () => page.locator('details[data-dcpcard="0"] tbody tr').count();
+    const rows = () => page.locator('details[data-dcpcard="0"] tbody tr:not(.hd)').count();
     expect(await rows()).toBe(10);
     for (let k = 0; k < 10; k++) {
       await page.fill(`input[data-dcp="0"][data-cell="blows"][data-k="${k}"]`, String(k + 1));
@@ -144,6 +144,11 @@ test.describe('field editor', () => {
     await page.fill('input[data-bh="0"][data-cell="dcp"][data-k="7"]', '');
     expect(await term()).toBe('Terminated at 0.4 m');
     await expect(page.locator('input[data-bh="0"][data-f="depth"]')).toHaveAttribute('placeholder', '0.4 from the log');
+    // Clearing the class takes the hole back, once the field is left.
+    await page.selectOption('select[data-bh="0"][data-layer="0"][data-f="uscs"]', '');
+    expect(await term()).toBe('Terminated at 0.0 m');
+    expect(await page.evaluate(() => report().boreholes[0].layers.length)).toBe(0);
+    await page.selectOption('select[data-bh="0"][data-newlayer="3"][data-f="uscs"]', 'CI');
     // A typed depth wins.
     await page.fill('input[data-bh="0"][data-f="depth"]', '1.5');
     expect(await term()).toBe('Terminated at 1.5 m');
@@ -216,14 +221,11 @@ test.describe('field editor', () => {
       const w = document.querySelector('details[data-dcpcard="0"] .logwrap');
       const t = w.querySelector('table');
       const right = w.getBoundingClientRect().right;
-      const inp = t.querySelector('input.cell').getBoundingClientRect();
       return { scroll: t.scrollWidth - w.clientWidth,
-               x: Math.round(Math.max(...[...t.querySelectorAll('button.x')].map(b => b.getBoundingClientRect().right)) - right),
-               inputShare: inp.width / w.clientWidth };
+               x: Math.round(Math.max(...[...t.querySelectorAll('button.x')].map(b => b.getBoundingClientRect().right)) - right) };
     });
     expect(over.scroll).toBeLessThanOrEqual(0);
     expect(over.x).toBeLessThanOrEqual(0);
-    expect(over.inputShare, 'the blows input uses the width on a phone').toBeGreaterThan(0.4);
   });
 
   test('the DCP ladder lays out a metre per column on a desktop', async ({ page }) => {
@@ -231,10 +233,18 @@ test.describe('field editor', () => {
     await gotoTab(page, 'DCP tests');
     await page.click('#adddcp');
     await page.click('[data-adddcprows="0"]');
-    const tops = await page.$$eval('details[data-dcpcard="0"] tbody tr', els => els.map(tr => Math.round(tr.getBoundingClientRect().top)));
+    const rows = 'details[data-dcpcard="0"] tbody tr:not(.hd)';
+    const tops = await page.$$eval(rows, els => els.map(tr => Math.round(tr.getBoundingClientRect().top)));
     expect(tops[10], 'row 11 starts a second column, level with row 1').toBe(tops[0]);
-    const lefts = await page.$$eval('details[data-dcpcard="0"] tbody tr', els => els.map(tr => Math.round(tr.getBoundingClientRect().left)));
+    const lefts = await page.$$eval(rows, els => els.map(tr => Math.round(tr.getBoundingClientRect().left)));
     expect(lefts[10]).toBeGreaterThan(lefts[9]);
+    // Each column carries its own header, and the input is the same size at any width.
+    await expect(page.locator('details[data-dcpcard="0"] tbody tr.hd:visible')).toHaveCount(2);
+    const wide = await page.$eval('input[data-dcp="0"][data-cell="blows"][data-k="0"]', e => Math.round(e.getBoundingClientRect().width));
+    await page.setViewportSize({ width: 375, height: 812 });
+    const narrow = await page.$eval('input[data-dcp="0"][data-cell="blows"][data-k="0"]', e => Math.round(e.getBoundingClientRect().width));
+    expect(Math.abs(wide - narrow), 'no jump between viewports').toBeLessThanOrEqual(2);
+    await expect(page.locator('details[data-dcpcard="0"] tbody tr.hd:visible')).toHaveCount(1);
   });
 
   test('info icons open a panel on tap and say the description is the engineer\'s', async ({ page }) => {
