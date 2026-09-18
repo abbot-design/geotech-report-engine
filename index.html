@@ -235,9 +235,17 @@ details.card input[aria-invalid="true"]{border-color:#cc2222;box-shadow:0 0 0 1p
 .log .pickers>div{min-width:150px;flex:1}
 .log .pickers select{margin:0}
 .reads{margin:.45rem 0 0;font-size:.86rem;color:var(--ink-soft)}.reads b{color:var(--ink);font-weight:600}
+/* The DCP ladder: ten rows (one metre) to a column, columns across the card,
+   so a 6 m test reads like the printed sheet instead of a 60-row scroll. */
 .log.ladder{width:auto;max-width:none}
-.log.ladder td.rd,.log.ladder th.rd{width:5rem}
-.log.ladder tbody tr{display:table-row}
+.log.ladder thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.log.ladder tbody{display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);grid-auto-columns:max-content;column-gap:1.75rem}
+.log.ladder tbody tr{display:grid;grid-template-columns:4.6rem 5.4rem 2.6rem;grid-template-areas:"dp rd x" "err err err";align-items:center;column-gap:.3rem;border-bottom:1px solid var(--line);padding:.2rem 0}
+.log.ladder td.dp{grid-area:dp}.log.ladder td.rd{grid-area:rd}.log.ladder td.x{grid-area:x}.log.ladder td.err{grid-area:err}
+.log td[hidden]{display:none}
+.log.ladder tbody tr:nth-child(10n+1){border-top:1px solid var(--line-strong)}
+.log.ladder td{display:block;border:0;padding:0;width:auto}
+.log.ladder td.err .fielderr{margin:.15rem 0 .1rem}
 .logfoot{margin-top:.6rem;align-items:center;justify-content:space-between}
 .logfoot .hint{margin:0}
 .tiprow td{padding:0;border:0}.tiprow p.tip{margin:.3rem 0 .4rem}
@@ -259,12 +267,15 @@ p.tip{font-size:.88rem;line-height:1.45;background:var(--paper);border:1px solid
   .log,.log tbody,.log tr.pk,.log tr.pk td{display:block}
   .log thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   .log tr.msg,.log tr.msg td{display:block}
-  .log.ladder tbody tr{display:grid;grid-template-columns:4.4rem minmax(0,1fr) 2.4rem;grid-template-areas:"dp rd x"}
-  .log.ladder td.rd{grid-area:rd}
-  .log:not(.ladder) tbody tr:not(.pk):not(.msg){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.2rem 3.2rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
+  .log.ladder tbody{grid-auto-flow:row;grid-template-rows:none;grid-auto-columns:auto}
+  .log.ladder tbody tr{grid-template-columns:4.4rem minmax(0,1fr) 2.4rem;grid-template-areas:"dp rd x" "err err err"}
+  .log.ladder tbody tr:nth-child(10n+1){border-top:0}
+  .log:not(.ladder) tbody tr:not(.pk):not(.msg){display:grid;grid-template-columns:4.2rem minmax(0,1fr) 3rem 3rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .2rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
+  .log button.x{min-width:2.4rem;width:2.4rem;padding:0;box-sizing:border-box}
   .log tbody tr.mat.haspk{border-bottom:0}
-  .log td.x{grid-area:x;width:auto}
-  .log td{display:block;border:0;padding:0;width:auto}
+  .log td.x{grid-area:x;width:auto;padding:0}
+  .log td{display:block;border:0;padding:0;width:auto;min-width:0}
+  .log td.cl select{max-width:100%;min-width:0}
   .log td.dp,.log td.cl,.log td.rd{width:auto}
   .log td.dp{grid-area:dp}.log td.cl{grid-area:cl}.log td.ds{grid-area:ds}
   .log td.pp{grid-area:pp}.log td.dcp{grid-area:dcp}
@@ -1993,18 +2004,23 @@ function checkField(el){
   const inCell = !!el.dataset.cell;
   const row = inCell ? el.closest("tr") : el.parentElement;
   const tag = inCell ? `${el.dataset.cell}-${el.dataset.k}` : (el.dataset.f||"");
-  let msg = inCell
+  /* A ladder row keeps its message in its own last cell, so the column grid
+     of ten rows per metre is not thrown out by an extra row. */
+  const errCell = inCell ? row.querySelector("td.err") : null;
+  let msg = errCell ? (errCell.hidden ? null : errCell) : inCell
     ? (row.nextElementSibling && row.nextElementSibling.matches(`tr.msg[data-for="${tag}"]`) ? row.nextElementSibling : null)
     : row.querySelector(`.fielderr[data-for="${tag}"]`);
   if(!bad){
     el.removeAttribute("aria-invalid"); el.removeAttribute("aria-describedby");
-    if(msg) msg.remove();
+    if(msg){ if(errCell){ errCell.hidden=true; errCell.innerHTML=""; } else msg.remove(); }
     return;
   }
   el.setAttribute("aria-invalid","true");
   if(!msg){
     const id=`fielderr${++fieldErrN}`;
-    if(inCell){
+    if(errCell){
+      errCell.innerHTML=`<p class="fielderr" id="${id}">${esc(RULE_MSG[key])}</p>`; errCell.hidden=false; msg=errCell;
+    } else if(inCell){
       msg=document.createElement("tr"); msg.className="msg"; msg.dataset.for=tag;
       msg.innerHTML=`<td colspan="${row.children.length}"><p class="fielderr" id="${id}">${esc(RULE_MSG[key])}</p></td>`;
       row.after(msg);
@@ -2089,7 +2105,7 @@ function renderDcps(){
       <thead><tr><th class="dp">Depth (m)</th><th class="rd">Blows</th><th class="x"></th></tr></thead>
       <tbody>${Array.from({length:rows},(_,k)=>`<tr><td class="dp">${fmtDepth(k*0.1)}–${fmtDepth((k+1)*0.1)}</td>
         <td class="rd"><input data-dcp="${i}" data-cell="blows" data-k="${k}" class="cell" value="${esc(blows[k]||"")}" autocomplete="off" enterkeyhint="next" aria-label="Blows at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td>
-        <td class="x"><button type="button" data-cleardcprow="${i}:${k}" class="danger x">✕<span class="sr-only"> clear the ${fmtDepth(k*0.1)} m row</span></button></td></tr>`).join("")}</tbody></table></div>
+        <td class="x"><button type="button" data-cleardcprow="${i}:${k}" class="danger x">✕<span class="sr-only"> clear the ${fmtDepth(k*0.1)} m row</span></button></td><td class="err" hidden></td></tr>`).join("")}</tbody></table></div>
      <div class="inline logfoot"><span><button type="button" data-adddcprows="${i}">+ Add 1 m</button>${rows>10 && lastFilled(blows)<=rows-10?` <button type="button" class="quiet" data-dropdcprows="${i}">Remove last metre</button>`:""}</span><span class="hint">Type R after the last blow count at refusal</span></div>`;
     el.appendChild(card);
     card.querySelectorAll("input").forEach(checkField);

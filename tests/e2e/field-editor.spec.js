@@ -196,6 +196,47 @@ test.describe('field editor', () => {
     await expect(page.locator('input[data-bh="0"][data-layer="0"][data-f="desc"], input[data-bh="0"][data-newlayer="0"][data-f="desc"]').first()).toHaveAttribute('maxlength', '120');
   });
 
+  test('nothing in a field card overflows a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Boreholes');
+    await page.click('#addbh');
+    let over = await page.evaluate(() => {
+      const w = document.querySelector('details[data-bhcard="0"] .logwrap');
+      const t = w.querySelector('table');
+      const right = w.getBoundingClientRect().right;
+      return { scroll: t.scrollWidth - w.clientWidth,
+               x: Math.round(Math.max(...[...t.querySelectorAll('button.x')].map(b => b.getBoundingClientRect().right)) - right) };
+    });
+    expect(over.scroll, 'borehole table wider than its card').toBeLessThanOrEqual(0);
+    expect(over.x, 'x past the card edge').toBeLessThanOrEqual(0);
+    await gotoTab(page, 'DCP tests');
+    await page.click('#adddcp');
+    over = await page.evaluate(() => {
+      const w = document.querySelector('details[data-dcpcard="0"] .logwrap');
+      const t = w.querySelector('table');
+      const right = w.getBoundingClientRect().right;
+      const inp = t.querySelector('input.cell').getBoundingClientRect();
+      return { scroll: t.scrollWidth - w.clientWidth,
+               x: Math.round(Math.max(...[...t.querySelectorAll('button.x')].map(b => b.getBoundingClientRect().right)) - right),
+               inputShare: inp.width / w.clientWidth };
+    });
+    expect(over.scroll).toBeLessThanOrEqual(0);
+    expect(over.x).toBeLessThanOrEqual(0);
+    expect(over.inputShare, 'the blows input uses the width on a phone').toBeGreaterThan(0.4);
+  });
+
+  test('the DCP ladder lays out a metre per column on a desktop', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'DCP tests');
+    await page.click('#adddcp');
+    await page.click('[data-adddcprows="0"]');
+    const tops = await page.$$eval('details[data-dcpcard="0"] tbody tr', els => els.map(tr => Math.round(tr.getBoundingClientRect().top)));
+    expect(tops[10], 'row 11 starts a second column, level with row 1').toBe(tops[0]);
+    const lefts = await page.$$eval('details[data-dcpcard="0"] tbody tr', els => els.map(tr => Math.round(tr.getBoundingClientRect().left)));
+    expect(lefts[10]).toBeGreaterThan(lefts[9]);
+  });
+
   test('info icons open a panel on tap and say the description is the engineer\'s', async ({ page }) => {
     await newReport(page, 'classification');
     await gotoTab(page, 'Boreholes');
