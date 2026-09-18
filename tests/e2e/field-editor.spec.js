@@ -170,10 +170,17 @@ test.describe('field editor', () => {
     const dcp = page.locator('input[data-bh="0"][data-cell="dcp"][data-k="0"]');
     await pp.fill('>450');   await expect(pp).not.toHaveAttribute('aria-invalid', 'true');
     await pp.fill('lots');   await expect(pp).toHaveAttribute('aria-invalid', 'true');
+    // The line under the row says what the field takes, and is read out with it.
+    const msg = page.locator('details[data-bhcard="0"] tr.msg[data-for="pp-0"] .fielderr');
+    await expect(msg).toHaveText('PP is a number in kPa, like 250 or >450.');
+    expect(await pp.getAttribute('aria-describedby')).toBe(await msg.getAttribute('id'));
+    await pp.fill('250');
+    await expect(page.locator('details[data-bhcard="0"] tr.msg')).toHaveCount(0);
     await dcp.fill('15 R');  await expect(dcp).not.toHaveAttribute('aria-invalid', 'true');
     await dcp.fill('15 Rs'); await expect(dcp).toHaveAttribute('aria-invalid', 'true');
     await page.fill('input[data-bh="0"][data-f="depth"]', '1,2');
     await expect(page.locator('input[data-bh="0"][data-f="depth"]')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('.fielderr[data-for="depth"]')).toHaveText('Depth in metres, like 1.2.');
     expect(await page.evaluate(() => report().boreholes[0].depth), 'still stored').toBe('1,2');
     await expect(page.locator('input[data-bh="0"][data-layer="0"][data-f="desc"], input[data-bh="0"][data-newlayer="0"][data-f="desc"]').first()).toHaveAttribute('maxlength', '120');
   });

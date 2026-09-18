@@ -227,6 +227,9 @@ details.card.bh>summary span,details.card.dcp>summary span{font-weight:600}
 .log tr.pk td{background:var(--paper);padding:.45rem .6rem .55rem;border-bottom:2px solid var(--line-strong)}
 .log optgroup{font-weight:700;color:var(--ink);font-style:normal}
 details.card input[aria-invalid="true"]{border-color:#cc2222;box-shadow:0 0 0 1px #cc2222 inset}
+.fielderr{margin:.25rem 0 0;font-size:.84rem;color:#9d1c1c}
+.log tr.msg td{padding:0 .3rem .35rem;border-bottom:1px solid var(--line)}
+.log tr.msg .fielderr{margin:0}
 .log tr:not(.mat) td.cl select,.log tr:not(.mat) td.ds input{color:var(--ink)}
 .rowhead.cardhead{margin:.9rem 0 .7rem}
 .log .pickers>div{min-width:150px;flex:1}
@@ -253,7 +256,8 @@ p.tip{font-size:.88rem;line-height:1.45;background:var(--paper);border:1px solid
 @media (max-width:560px){
   .log,.log tbody,.log tr.pk,.log tr.pk td{display:block}
   .log thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-  .log tbody tr:not(.pk){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.2rem 3.2rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
+  .log tr.msg,.log tr.msg td{display:block}
+  .log tbody tr:not(.pk):not(.msg){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.2rem 3.2rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
   .log tbody tr.mat.haspk{border-bottom:0}
   .log td.x{grid-area:x;width:auto}
   .log td{display:block;border:0;padding:0;width:auto}
@@ -1967,12 +1971,45 @@ const RULES = {
   depth: /^\d+(\.\d+)?$/,                  /* 1.2 */
   rl:    /^-?\d+(\.\d+)?$/
 };
-const ruleFor = el => el.dataset.cell==="pp" ? RULES.pp : el.dataset.cell ? RULES.blows
-  : /^(depth|waterDepth)$/.test(el.dataset.f||"") ? RULES.depth : el.dataset.f==="rl" ? RULES.rl : null;
+/* One short line, under the field, saying what the field takes, shown only
+   while the value breaks the rule. A red border alone says "wrong" without
+   saying what; a standing hint would say it to everyone typing correctly. */
+const RULE_MSG = {
+  pp:    "PP is a number in kPa, like 250 or >450.",
+  blows: "Blows are a count, with R after the last at refusal: 15 R.",
+  depth: "Depth in metres, like 1.2.",
+  rl:    "RL in metres, like 12.4."
+};
+const ruleKey = el => el.dataset.cell==="pp" ? "pp" : el.dataset.cell ? "blows"
+  : /^(depth|waterDepth)$/.test(el.dataset.f||"") ? "depth" : el.dataset.f==="rl" ? "rl" : null;
+let fieldErrN = 0;
 function checkField(el){
-  const rule=ruleFor(el); if(!rule) return;
-  const bad = el.value.trim()!=="" && !rule.test(el.value.trim());
-  if(bad) el.setAttribute("aria-invalid","true"); else el.removeAttribute("aria-invalid");
+  const key=ruleKey(el); if(!key) return;
+  const bad = el.value.trim()!=="" && !RULES[key].test(el.value.trim());
+  const inCell = !!el.dataset.cell;
+  const row = inCell ? el.closest("tr") : el.parentElement;
+  const tag = inCell ? `${el.dataset.cell}-${el.dataset.k}` : (el.dataset.f||"");
+  let msg = inCell
+    ? (row.nextElementSibling && row.nextElementSibling.matches(`tr.msg[data-for="${tag}"]`) ? row.nextElementSibling : null)
+    : row.querySelector(`.fielderr[data-for="${tag}"]`);
+  if(!bad){
+    el.removeAttribute("aria-invalid"); el.removeAttribute("aria-describedby");
+    if(msg) msg.remove();
+    return;
+  }
+  el.setAttribute("aria-invalid","true");
+  if(!msg){
+    const id=`fielderr${++fieldErrN}`;
+    if(inCell){
+      msg=document.createElement("tr"); msg.className="msg"; msg.dataset.for=tag;
+      msg.innerHTML=`<td colspan="${row.children.length}"><p class="fielderr" id="${id}">${esc(RULE_MSG[key])}</p></td>`;
+      row.after(msg);
+    } else {
+      msg=document.createElement("p"); msg.className="fielderr"; msg.id=id; msg.dataset.for=tag;
+      msg.textContent=RULE_MSG[key]; row.append(msg);
+    }
+  }
+  el.setAttribute("aria-describedby", msg.matches("p") ? msg.id : msg.querySelector("p").id);
 }
 const bhSummary = (b,i) => [`BH${i+1}`, b.method, `${fmtDepth(termDepth(b))} m`, b.termReason?b.termReason.toLowerCase():""].filter(Boolean).join(" · ");
 const dcpCardSummary = (x,i) => { const rd = refusalDepth(x.blows||[]) ?? num(x.depth);
