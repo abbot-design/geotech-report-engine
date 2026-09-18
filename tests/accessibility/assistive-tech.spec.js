@@ -10,9 +10,9 @@ const { newReport, gotoTab } = require('../helpers');
 test.describe('screen-reader-only text', () => {
   test('sr-only text is present for assistive tech but not visible', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-addlayer="0"]');
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'SC');
 
     const srSpan = page.locator('[data-dellayer="0:0"] .sr-only');
     await expect(srSpan).toHaveCount(1);

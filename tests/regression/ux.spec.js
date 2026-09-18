@@ -60,7 +60,7 @@ test.describe('no autofill on third-party data', () => { // review item B2
 test.describe('the completeness indicator tells the truth', () => { // review item P4
   test('a brand-new report claims nothing is complete', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await expect(page.locator('#stratalabel')).toHaveText('0 of 10 sections complete');
+    await expect(page.locator('#stratalabel')).toHaveText('0 of 11 sections complete');
     await expect(page.locator('#tabrail button.done')).toHaveCount(0);
     await expect(page.locator('#tabrail button.started')).toHaveCount(0);
   });
@@ -72,13 +72,13 @@ test.describe('the completeness indicator tells the truth', () => { // review it
     await page.locator('#f_author').blur();
     await expect(page.locator('#tabrail button:text-is("Setup")')).toHaveClass(/started/);
     await expect(page.locator('#tabrail button:text-is("Setup")')).not.toHaveClass(/done/);
-    await expect(page.locator('#stratalabel')).toHaveText('0 of 10 sections complete');
+    await expect(page.locator('#stratalabel')).toHaveText('0 of 11 sections complete');
 
     await page.fill('#f_author', 'Ryan Chalmers');
     await page.fill('#f_reviewer', 'Test Reviewer');
     await page.locator('#f_reviewer').blur();
     await expect(page.locator('#tabrail button:text-is("Setup")')).toHaveClass(/done/);
-    await expect(page.locator('#stratalabel')).toHaveText('1 of 10 sections complete');
+    await expect(page.locator('#stratalabel')).toHaveText('1 of 11 sections complete');
   });
 
   test('Photos does not claim completion with no photos', async ({ page }) => {
@@ -153,11 +153,11 @@ test.describe('the indicator keeps up with typing', () => { // review item P5
   test('the count line updates without navigating away', async ({ page }) => {
     await newReport(page, 'comprehensive');
     await gotoTab(page, 'Setup');
-    await expect(page.locator('#stratalabel')).toHaveText('0 of 10 sections complete');
+    await expect(page.locator('#stratalabel')).toHaveText('0 of 11 sections complete');
     await page.fill('#f_author', 'Ryan Chalmers');
     await page.fill('#f_reviewer', 'Test Reviewer');
     // no tab click, no Next — the rail must catch up on its own
-    await expect(page.locator('#stratalabel')).toHaveText('1 of 10 sections complete');
+    await expect(page.locator('#stratalabel')).toHaveText('1 of 11 sections complete');
     await expect(page.locator('#tabrail button:text-is("Setup")')).toHaveClass(/done/);
   });
 
@@ -176,7 +176,7 @@ test.describe('the indicator keeps up with typing', () => { // review item P5
 });
 
 test.describe('copy and hint reduction', () => { // review item A
-  const SECTIONS = ['Setup', 'Client & site ID', 'Site description', 'Fieldwork',
+  const SECTIONS = ['Setup', 'Client & site ID', 'Site description', 'Boreholes', 'DCP tests',
                     'Results', 'Classification', 'Wind', 'Recommendations',
                     'Photos', 'Review & issue'];
 
@@ -366,15 +366,19 @@ test.describe('incomplete is amber, never red', () => { // review item F5
 test.describe('destructive row actions are recoverable', () => { // review item F6
   test('a deleted borehole comes back at the same index with its layers', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
     await page.click('#addbh');
+    // Adding BH2 collapsed BH1; reopen it to edit.
+    await page.click('details[data-bhcard="0"] > summary');
     await page.selectOption('select[data-bh="0"][data-f="method"]', 'Hand auger');
     await page.fill('input[data-bh="0"][data-f="depth"]', '1.2');
-    await page.click('[data-addlayer="0"]');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="desc"]', 'Sandy CLAY, brown, stiff');
+    await page.fill('input[data-bh="0"][data-newlayer="0"][data-f="desc"]', 'Sandy CLAY, brown, stiff');
+    await page.click('details[data-bhcard="1"] > summary');
     await page.selectOption('select[data-bh="1"][data-f="method"]', 'Test pit');
 
+    // Remove sits inside the card: a closed hole cannot be deleted by accident.
+    await page.click('details[data-bhcard="0"] > summary');
     await page.click('[data-delbh="0"]');
     expect(await page.evaluate(() => report().boreholes.length)).toBe(1);
 
@@ -388,12 +392,10 @@ test.describe('destructive row actions are recoverable', () => { // review item 
 
   test('a deleted soil layer comes back in position', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-addlayer="0"]');
-    await page.click('[data-addlayer="0"]');
-    await page.fill('input[data-bh="0"][data-layer="0"][data-f="desc"]', 'Layer one');
-    await page.fill('input[data-bh="0"][data-layer="1"][data-f="desc"]', 'Layer two');
+    await page.fill('input[data-bh="0"][data-newlayer="0"][data-f="desc"]', 'Layer one');
+    await page.fill('input[data-bh="0"][data-newlayer="3"][data-f="desc"]', 'Layer two');
     await page.click('[data-dellayer="0:0"]');
     await page.click('.toast button.undo');
     const layers = await page.evaluate(() => report().boreholes[0].layers.map(l => l.desc));
@@ -402,7 +404,7 @@ test.describe('destructive row actions are recoverable', () => { // review item 
 
   test('the undo offer expires and the delete sticks', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
     await page.click('[data-delbh="0"]');
     await expect(page.locator('.toast button.undo')).toBeVisible();
@@ -478,11 +480,11 @@ test.describe('a new section starts at the top', () => { // review item F12
 test.describe('row editor controls line up with their fields', () => { // review item F13
   test('the soil-layer remove button aligns with the inputs on its row', async ({ page }) => {
     await newReport(page, 'comprehensive');
-    await gotoTab(page, 'Fieldwork');
+    await gotoTab(page, 'Boreholes');
     await page.click('#addbh');
-    await page.click('[data-addlayer="0"]');
+    await page.selectOption('select[data-bh="0"][data-newlayer="0"][data-f="uscs"]', 'SC');
     const r = await page.evaluate(() => {
-      const row = document.querySelector('[data-dellayer="0:0"]').closest('.inline');
+      const row = document.querySelector('[data-dellayer="0:0"]').closest('tr');
       const btn = row.querySelector('[data-dellayer="0:0"]').getBoundingClientRect();
       const inp = row.querySelector('input[data-f="desc"]').getBoundingClientRect();
       return { top: btn.top - inp.top, bottom: btn.bottom - inp.bottom };
@@ -661,7 +663,7 @@ test.describe('form alignment and layout polish', () => { // review item F14
   test('every control on a grid row starts at the same y, chip or no chip', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 1000 });
     await newReport(page, 'comprehensive');
-    for (const label of ['Setup', 'Client & site ID', 'Site description', 'Fieldwork',
+    for (const label of ['Setup', 'Client & site ID', 'Site description', 'Boreholes', 'DCP tests',
                          'Classification', 'Wind', 'Recommendations', 'Review & issue']) {
       await gotoTab(page, label);
       const worst = await page.evaluate(() => {

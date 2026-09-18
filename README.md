@@ -22,7 +22,11 @@ No framework, no build step, no paid services. One HTML file, a manifest and a s
 - **Single-source data**: address, dates, class are entered once and flow through the
   entire document (WCAG 2.2 “redundant entry”, and the fix for the internal-contradiction failures
   seen in competitor samples).
-- **Dynamic field records**: boreholes with layered soil profiles, DCP tests, lab samples (LL/LS).
+- **Field logs to AS 1726:2017**: a borehole is one table, one row per 100 mm — describe the material
+  where it changes (class from the standard's group symbols, the pickers the standard gives that kind
+  of material, the engineer's own words for the rest), read the pocket penetrometer and DCP blows on
+  every row. The ladder opens at one metre and grows without limit. DCP tests driven away from a hole
+  have their own tab and card. One card open at a time; the printed log summarises to 300 mm.
 - **Photo capture** from the device camera, compressed on-device (~1400 px JPEG) into the report
   appendix with captions. Site imagery lives there, in Appendix B, rather than on the cover: the
   cover carries the brand photo, and a client looking for the site sees it with the rest of the
