@@ -235,7 +235,8 @@ details.card input[aria-invalid="true"]{border-color:#cc2222;box-shadow:0 0 0 1p
 .log .pickers>div{min-width:150px;flex:1}
 .log .pickers select{margin:0}
 .reads{margin:.45rem 0 0;font-size:.86rem;color:var(--ink-soft)}.reads b{color:var(--ink);font-weight:600}
-.log.ladder{max-width:15rem}
+.log.ladder{max-width:18rem}
+.log.ladder tbody tr{display:table-row}
 .logfoot{margin-top:.6rem;align-items:center;justify-content:space-between}
 .logfoot .hint{margin:0}
 .tiprow td{padding:0;border:0}.tiprow p.tip{margin:.3rem 0 .4rem}
@@ -257,7 +258,9 @@ p.tip{font-size:.88rem;line-height:1.45;background:var(--paper);border:1px solid
   .log,.log tbody,.log tr.pk,.log tr.pk td{display:block}
   .log thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   .log tr.msg,.log tr.msg td{display:block}
-  .log tbody tr:not(.pk):not(.msg){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.2rem 3.2rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
+  .log.ladder tbody tr{display:grid;grid-template-columns:4.4rem minmax(0,1fr) 2.4rem;grid-template-areas:"dp rd x"}
+  .log.ladder td.rd{grid-area:rd}
+  .log:not(.ladder) tbody tr:not(.pk):not(.msg){display:grid;grid-template-columns:4.4rem minmax(0,1fr) 3.2rem 3.2rem 2.4rem;grid-template-areas:"dp cl pp dcp x" "ds ds ds ds ds";gap:.25rem .3rem;align-items:center;border-bottom:1px solid var(--line);padding:.25rem 0}
   .log tbody tr.mat.haspk{border-bottom:0}
   .log td.x{grid-area:x;width:auto}
   .log td{display:block;border:0;padding:0;width:auto}
@@ -2082,9 +2085,10 @@ function renderDcps(){
       ${infoField("remark",`tip-rem-dcp${i}`,"Remark","the remark",`<input data-dcp="${i}" data-f="note" value="${esc(x.note||"")}" placeholder="Bouncing on bedrock. Brown sand on dry tip." maxlength="200">`).replace("<div>",'<div class="wide">')}
      </div>
      <div class="logwrap"><table class="log ladder" aria-label="DCP ${i+1} blows, one row per 100 mm">
-      <thead><tr><th class="dp">Depth (m)</th><th class="rd">Blows</th></tr></thead>
+      <thead><tr><th class="dp">Depth (m)</th><th class="rd">Blows</th><th class="x"></th></tr></thead>
       <tbody>${Array.from({length:rows},(_,k)=>`<tr><td class="dp">${fmtDepth(k*0.1)}–${fmtDepth((k+1)*0.1)}</td>
-        <td class="rd"><input data-dcp="${i}" data-cell="blows" data-k="${k}" class="cell" value="${esc(blows[k]||"")}" autocomplete="off" enterkeyhint="next" aria-label="Blows at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td></tr>`).join("")}</tbody></table></div>
+        <td class="rd"><input data-dcp="${i}" data-cell="blows" data-k="${k}" class="cell" value="${esc(blows[k]||"")}" autocomplete="off" enterkeyhint="next" aria-label="Blows at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td>
+        <td class="x"><button type="button" data-cleardcprow="${i}:${k}" class="danger x">✕<span class="sr-only"> clear the ${fmtDepth(k*0.1)} m row</span></button></td></tr>`).join("")}</tbody></table></div>
      <div class="inline logfoot"><span><button type="button" data-adddcprows="${i}">+ Add 1 m</button>${rows>10 && lastFilled(blows)<=rows-10?` <button type="button" class="quiet" data-dropdcprows="${i}">Remove last metre</button>`:""}</span><span class="hint">Type R after the last blow count at refusal</span></div>`;
     el.appendChild(card);
     card.querySelectorAll("input").forEach(checkField);
@@ -3109,6 +3113,10 @@ document.addEventListener("click",e=>{
   if(t.id==="adddcp"){ report().dcps.push({depth:"",note:"",location:"",rl:"",blows:[]}); openDcp=report().dcps.length-1; saveDb(); renderDcps(); renderTabs(); }
   if(t.dataset.deldcp!==undefined){ const i=+t.dataset.deldcp, gone=report().dcps.splice(i,1)[0];
     saveDb(); renderDcps(); renderTabs(); noteUndo(`DCP ${i+1} removed.`, ()=>report().dcps.splice(i,0,gone)); }
+  if(t.dataset.cleardcprow){ const [i,k]=t.dataset.cleardcprow.split(":").map(Number); const x=report().dcps[i];
+    const was=(x.blows||[])[k]; if(x.blows && k<x.blows.length) x.blows[k]="";
+    saveDb(); renderDcps();
+    noteUndo(`${fmtDepth(k*0.1)} m row of DCP ${i+1} cleared.`, ()=>{ if(was!=null) (x.blows||(x.blows=[]))[k]=was; }); }
   if(t.dataset.adddcprows!==undefined){ const x=report().dcps[+t.dataset.adddcprows];
     x.rows=Math.max(x.rows||0,10,Math.ceil(lastFilled(x.blows||[])/10)*10)+10; saveDb(); renderDcps(); }
   if(t.dataset.tip){ const p=$(t.dataset.tip); if(p){ const open=p.hidden; p.hidden=!open; t.setAttribute("aria-expanded",String(open)); } }

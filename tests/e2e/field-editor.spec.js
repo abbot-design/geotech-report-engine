@@ -162,6 +162,17 @@ test.describe('field editor', () => {
     expect(await page.evaluate(() => [report().boreholes[0].layers[0].uscs, report().boreholes[0].dcp[5]])).toEqual(['SC', '7']);
   });
 
+  test('the x on a DCP row clears that count, with undo', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'DCP tests');
+    await page.click('#adddcp');
+    await page.fill('input[data-dcp="0"][data-cell="blows"][data-k="2"]', '7');
+    await page.click('[data-cleardcprow="0:2"]');
+    expect(await page.evaluate(() => report().dcps[0].blows[2])).toBe('');
+    await page.click('.toast button.undo');
+    expect(await page.evaluate(() => report().dcps[0].blows[2])).toBe('7');
+  });
+
   test('a value outside a field\'s rule is marked, not blocked', async ({ page }) => {
     await newReport(page, 'classification');
     await gotoTab(page, 'Boreholes');
