@@ -226,6 +226,7 @@ details.card.bh>summary span,details.card.dcp>summary span{font-weight:600}
 .log tr.mat.haspk td{border-bottom:0}
 .log tr.pk td{background:var(--paper);padding:.45rem .6rem .55rem;border-bottom:2px solid var(--line-strong)}
 .log optgroup{font-weight:700;color:var(--ink);font-style:normal}
+details.card input[aria-invalid="true"]{border-color:#cc2222;box-shadow:0 0 0 1px #cc2222 inset}
 .log tr:not(.mat) td.cl select,.log tr:not(.mat) td.ds input{color:var(--ink)}
 .rowhead.cardhead{margin:.9rem 0 .7rem}
 .log .pickers>div{min-width:150px;flex:1}
@@ -1939,8 +1940,14 @@ function normaliseLayers(b){
   b.layers.sort((x,y)=>(num(x.from)??0)-(num(y.from)??0));
   b.layers.forEach((L,j)=>{
     const next=b.layers[j+1], from=num(L.from)??0;
+    /* A layer described on a row reaches at least the bottom of that row. A
+       layer entered in the table takes its bottom from the table each time,
+       so a cleared reading shortens the hole again; a layer saved before the
+       table keeps the depth it was typed with unless the table goes deeper. */
+    const rowBottom = (Math.floor(from*10+1e-9)+1)/10;
+    const logged = Math.max(lastFilled(b.pp)*0.1, lastFilled(b.dcp)*0.1, rowBottom);
     const to = next ? num(next.from)
-             : (num(b.depth) ?? Math.max(lastFilled(b.pp)*0.1, lastFilled(b.dcp)*0.1, num(L.to)??0));
+             : (num(b.depth) ?? (L.v===2 ? logged : Math.max(logged, num(L.to)??0)));
     if(to!=null) L.to = fmtDepth(Math.max(to, from)); });
 }
 /* Rows on show: whole metres, at least one, covering everything logged. */
@@ -1951,6 +1958,22 @@ function bhRows(b){
 }
 const metreUsed = (b,k) => lastFilled(b.pp)>k || lastFilled(b.dcp)>k || termDepth(b)>k*0.1+1e-9 ||
   (b.layers||[]).some(L=>(num(L.from)??-1)>=k*0.1-1e-9);
+/* What each field accepts. A value outside its rule is marked, never
+   blocked: the engineer is typing with gloves on and will fix it in a
+   moment; the mark is there so it is not missed. */
+const RULES = {
+  pp:    /^[<>]?\s*\d+(\.\d+)?$/,          /* 250, >450 */
+  blows: /^\d+\s*[Rr]?$/,                   /* 15, 15 R */
+  depth: /^\d+(\.\d+)?$/,                  /* 1.2 */
+  rl:    /^-?\d+(\.\d+)?$/
+};
+const ruleFor = el => el.dataset.cell==="pp" ? RULES.pp : el.dataset.cell ? RULES.blows
+  : /^(depth|waterDepth)$/.test(el.dataset.f||"") ? RULES.depth : el.dataset.f==="rl" ? RULES.rl : null;
+function checkField(el){
+  const rule=ruleFor(el); if(!rule) return;
+  const bad = el.value.trim()!=="" && !rule.test(el.value.trim());
+  if(bad) el.setAttribute("aria-invalid","true"); else el.removeAttribute("aria-invalid");
+}
 const bhSummary = (b,i) => [`BH${i+1}`, b.method, `${fmtDepth(termDepth(b))} m`, b.termReason?b.termReason.toLowerCase():""].filter(Boolean).join(" · ");
 const dcpCardSummary = (x,i) => { const rd = refusalDepth(x.blows||[]) ?? num(x.depth);
   return [`DCP ${i+1}`, rd!=null?`refusal at ${fmtDepth(rd)} m`:"", x.location||""].filter(Boolean).join(" · "); };
@@ -1986,12 +2009,13 @@ function renderBoreholes(){
         const cell=(f)=>`<td class="rd ${f}"><input data-bh="${i}" data-cell="${f}" data-k="${k}" class="cell" value="${esc((b[f]||[])[k]||"")}" autocomplete="off" enterkeyhint="next" placeholder="${f==="pp"?"PP":"DCP"}" aria-label="${f==="pp"?"PP kPa":"DCP blows"} at ${at} to ${fmtDepth((k+1)*0.1)} m"></td>`;
         /* A row with no layer has the same controls; filling either one
            starts a layer at that depth. */
+        const xCell=`<td class="x"><button type="button" data-clearrow="${i}:${k}" class="danger x">✕<span class="sr-only"> clear the ${at} m row</span></button></td>`;
         if(!L) return `<tr>${depthCell}<td class="cl">${classSelect(`data-bh="${i}" data-newlayer="${k}" data-f="uscs" aria-label="Class from ${at} m"`, "")}</td>
-          <td class="ds"><input data-bh="${i}" data-newlayer="${k}" data-f="desc" value="" placeholder="${k===0?"fine to medium, brown":"same as above"}" aria-label="Description from ${at} m"></td>${cell("pp")}${cell("dcp")}<td class="x"></td></tr>`;
+          <td class="ds"><input data-bh="${i}" data-newlayer="${k}" data-f="desc" value="" placeholder="${k===0?"fine to medium, brown":"same as above"}" maxlength="120" aria-label="Description from ${at} m"></td>${cell("pp")}${cell("dcp")}${xCell}</tr>`;
         const strip=pickerStrip(i,j,L);
         return `<tr class="mat${strip?" haspk":""}">${depthCell}<td class="cl">${classSelect(`data-bh="${i}" data-layer="${j}" data-f="uscs" aria-label="Class at ${fmtDepth(num(L.from))} m"`, L.uscs)}</td>
-          <td class="ds"><input data-bh="${i}" data-layer="${j}" data-f="desc" value="${esc(L.desc||"")}" placeholder="fine to medium, brown" aria-label="Description at ${fmtDepth(num(L.from))} m"></td>${cell("pp")}${cell("dcp")}
-          <td class="x"><button type="button" data-dellayer="${i}:${j}" class="danger x">✕<span class="sr-only"> remove layer</span></button></td></tr>
+          <td class="ds"><input data-bh="${i}" data-layer="${j}" data-f="desc" value="${esc(L.desc||"")}" placeholder="fine to medium, brown" maxlength="120" aria-label="Description at ${fmtDepth(num(L.from))} m"></td>${cell("pp")}${cell("dcp")}
+          <td class="x"><button type="button" data-dellayer="${i}:${j}" data-clearrow="${i}:${k}" class="danger x">✕<span class="sr-only"> clear the ${at} m row and its layer</span></button></td></tr>
          ${strip?`<tr class="pk"><td colspan="6">${strip}</td></tr>`:""}`;
       }).join("")}</tbody></table></div>
      <div class="inline logfoot"><span><button type="button" data-addrows="${i}">+ Add 1 m</button> <button type="button" class="quiet" data-droprows="${i}"${rows>10 && !metreUsed(b,rows-10)?"":" hidden"}>Remove last metre</button></span><span class="hint" data-bhterm="${i}">Terminated at ${fmtDepth(term)} m</span></div>
@@ -2000,6 +2024,7 @@ function renderBoreholes(){
        <label><span class="sr-only">Caption for BH${i+1} photo ${q+1}</span><input data-bh="${i}" data-bhcap="${q}" value="${esc(p.caption||"")}" placeholder="Spoil at 0.6 m"></label>
        <button type="button" class="danger" data-delbhphoto="${i}:${q}">Remove</button></figure>`).join("")}</div>`:""}`;
     el.appendChild(card);
+    card.querySelectorAll("input").forEach(checkField);
   });
 }
 function renderDcps(){
@@ -2014,10 +2039,10 @@ function renderDcps(){
     card.innerHTML=`<summary><span data-dcpsum="${i}">${esc(dcpCardSummary(x,i))}</span></summary>
      <div class="rowhead cardhead"><span></span><button type="button" class="danger" data-deldcp="${i}">Remove DCP ${i+1}</button></div>
      <div class="grid">
-      ${cardField("Location",`<input data-dcp="${i}" data-f="location" value="${esc(x.location||"")}" placeholder="Refer to site plan">`)}
+      ${cardField("Location",`<input data-dcp="${i}" data-f="location" value="${esc(x.location||"")}" placeholder="Refer to site plan" maxlength="200">`)}
       ${infoField("rl",`tip-rl-dcp${i}`,"RL (m)","RL",`<input data-dcp="${i}" data-f="rl" inputmode="decimal" value="${esc(x.rl||"")}">`)}
       ${cardField("Refusal depth (m)",`<input data-dcp="${i}" data-f="depth" inputmode="decimal" value="${esc(x.depth||"")}" placeholder="${refusalDepth(blows)!=null?fmtDepth(refusalDepth(blows))+" from the blows":"from the blows"}">`)}
-      ${infoField("remark",`tip-rem-dcp${i}`,"Remark","the remark",`<input data-dcp="${i}" data-f="note" value="${esc(x.note||"")}" placeholder="Bouncing on bedrock. Brown sand on dry tip.">`).replace("<div>",'<div class="wide">')}
+      ${infoField("remark",`tip-rem-dcp${i}`,"Remark","the remark",`<input data-dcp="${i}" data-f="note" value="${esc(x.note||"")}" placeholder="Bouncing on bedrock. Brown sand on dry tip." maxlength="200">`).replace("<div>",'<div class="wide">')}
      </div>
      <div class="logwrap"><table class="log ladder" aria-label="DCP ${i+1} blows, one row per 100 mm">
       <thead><tr><th class="dp">Depth (m)</th><th class="rd">Blows</th></tr></thead>
@@ -2025,6 +2050,7 @@ function renderDcps(){
         <td class="rd"><input data-dcp="${i}" data-cell="blows" data-k="${k}" class="cell" value="${esc(blows[k]||"")}" autocomplete="off" enterkeyhint="next" aria-label="Blows at ${fmtDepth(k*0.1)} to ${fmtDepth((k+1)*0.1)} m"></td></tr>`).join("")}</tbody></table></div>
      <div class="inline logfoot"><span><button type="button" data-adddcprows="${i}">+ Add 1 m</button>${rows>10 && lastFilled(blows)<=rows-10?` <button type="button" class="quiet" data-dropdcprows="${i}">Remove last metre</button>`:""}</span><span class="hint">Type R after the last blow count at refusal</span></div>`;
     el.appendChild(card);
+    card.querySelectorAll("input").forEach(checkField);
   });
 }
 /* One card open at a time on each field tab. toggle does not bubble and
@@ -2044,7 +2070,10 @@ function onCardToggle(e){
 function refreshBh(i){
   const b=report().boreholes[i]; if(!b) return;
   const s=document.querySelector(`[data-bhsum="${i}"]`); if(s) s.textContent=bhSummary(b,i);
-  const t=document.querySelector(`[data-bhterm="${i}"]`); if(t) t.textContent=`Terminated at ${fmtDepth(termDepth(b))} m`;
+  normaliseLayers(b);
+  const term=termDepth(b);
+  const t=document.querySelector(`[data-bhterm="${i}"]`); if(t) t.textContent=`Terminated at ${fmtDepth(term)} m`;
+  const dep=document.querySelector(`input[data-bh="${i}"][data-f="depth"]`); if(dep) dep.placeholder=`${fmtDepth(term)} from the log`;
   const rows=bhRows(b), drop=document.querySelector(`[data-droprows="${i}"]`);
   if(drop) drop.hidden = !(rows>10 && !metreUsed(b,rows-10));
   b.layers.forEach((L,j)=>{ const el=document.querySelector(`[data-reads="${i}:${j}"]`); if(el) el.textContent=layerLine(L,false); });
@@ -3022,9 +3051,16 @@ document.addEventListener("click",e=>{
   if(t.dataset.delbh!==undefined){ const i=+t.dataset.delbh, gone=report().boreholes.splice(i,1)[0];
     saveDb(); renderBoreholes(); renderTabs();
     noteUndo(`BH${i+1} removed.`, ()=>report().boreholes.splice(i,0,gone)); }
-  if(t.dataset.dellayer){ const [i,j]=t.dataset.dellayer.split(":").map(Number); const b=report().boreholes[i];
-    const gone=b.layers.splice(j,1)[0]; normaliseLayers(b); saveDb(); renderBoreholes();
-    noteUndo(`Layer at ${esc(gone.from)} m of BH${i+1} removed.`, ()=>{ b.layers.splice(j,0,gone); normaliseLayers(b); }); }
+  if(t.dataset.clearrow){ const [i,k]=t.dataset.clearrow.split(":").map(Number); const b=report().boreholes[i];
+    /* The whole line: the layer that starts on it and the readings on it. */
+    const L=layerAt(b,k), j=L?b.layers.indexOf(L):-1, was={pp:(b.pp||[])[k], dcp:(b.dcp||[])[k]};
+    if(j>=0) b.layers.splice(j,1);
+    if(b.pp && k<b.pp.length) b.pp[k]=""; if(b.dcp && k<b.dcp.length) b.dcp[k]="";
+    normaliseLayers(b); saveDb(); renderBoreholes();
+    noteUndo(`${fmtDepth(k*0.1)} m row of BH${i+1} cleared.`, ()=>{
+      if(j>=0) b.layers.splice(j,0,L);
+      if(was.pp!=null) (b.pp||(b.pp=[]))[k]=was.pp; if(was.dcp!=null) (b.dcp||(b.dcp=[]))[k]=was.dcp;
+      normaliseLayers(b); }); }
   if(t.dataset.addrows!==undefined){ const b=report().boreholes[+t.dataset.addrows]; b.rows=bhRows(b)+10; saveDb(); renderBoreholes(); }
   if(t.dataset.droprows!==undefined){ const b=report().boreholes[+t.dataset.droprows]; b.rows=Math.max(10,bhRows(b)-10); saveDb(); renderBoreholes(); }
   if(t.dataset.dropdcprows!==undefined){ const x=report().dcps[+t.dataset.dropdcprows];
@@ -3113,6 +3149,7 @@ function onFieldEdit(e){
   if(el.dataset.arr){ const arr=r.d[el.dataset.arr];
     if(el.checked && !arr.includes(el.value)) arr.push(el.value);
     if(!el.checked) r.d[el.dataset.arr]=arr.filter(v=>v!==el.value); saveDb(); }
+  if(el.dataset.bh!==undefined || el.dataset.dcp!==undefined) checkField(el);
   if(el.dataset.bh!==undefined){
     const i=+el.dataset.bh, b=r.boreholes[i];
     if(el.dataset.cell){

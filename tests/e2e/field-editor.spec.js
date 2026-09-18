@@ -128,6 +128,56 @@ test.describe('field editor', () => {
     await expect(page.locator('[data-droprows="0"]'), 'not offered once the metre holds a reading').toBeHidden();
   });
 
+  test('termination follows what is in the table, both ways, and the field shows it', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Boreholes');
+    await page.click('#addbh');
+    const term = () => page.locator('[data-bhterm="0"]').innerText();
+    expect(await term()).toBe('Terminated at 0.0 m');
+    // A class on the 0.3–0.4 row: the hole reaches the bottom of that row.
+    await page.selectOption('select[data-bh="0"][data-newlayer="3"][data-f="uscs"]', 'CI');
+    expect(await term()).toBe('Terminated at 0.4 m');
+    await expect(page.locator('input[data-bh="0"][data-f="depth"]')).toHaveAttribute('placeholder', '0.4 from the log');
+    // Readings deeper down take it further; clearing them brings it back.
+    await page.fill('input[data-bh="0"][data-cell="dcp"][data-k="7"]', '9');
+    expect(await term()).toBe('Terminated at 0.8 m');
+    await page.fill('input[data-bh="0"][data-cell="dcp"][data-k="7"]', '');
+    expect(await term()).toBe('Terminated at 0.4 m');
+    await expect(page.locator('input[data-bh="0"][data-f="depth"]')).toHaveAttribute('placeholder', '0.4 from the log');
+    // A typed depth wins.
+    await page.fill('input[data-bh="0"][data-f="depth"]', '1.5');
+    expect(await term()).toBe('Terminated at 1.5 m');
+  });
+
+  test('the x on any row clears that whole line, with undo', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Boreholes');
+    await page.click('#addbh');
+    await expect(page.locator('[data-clearrow="0:5"]'), 'present on a row with no layer').toHaveCount(1);
+    await page.fill('input[data-bh="0"][data-cell="dcp"][data-k="5"]', '7');
+    await page.selectOption('select[data-bh="0"][data-newlayer="5"][data-f="uscs"]', 'SC');
+    await page.click('[data-clearrow="0:5"]');
+    expect(await page.evaluate(() => [report().boreholes[0].layers.length, report().boreholes[0].dcp[5]])).toEqual([0, '']);
+    await page.click('.toast button.undo');
+    expect(await page.evaluate(() => [report().boreholes[0].layers[0].uscs, report().boreholes[0].dcp[5]])).toEqual(['SC', '7']);
+  });
+
+  test('a value outside a field\'s rule is marked, not blocked', async ({ page }) => {
+    await newReport(page, 'classification');
+    await gotoTab(page, 'Boreholes');
+    await page.click('#addbh');
+    const pp = page.locator('input[data-bh="0"][data-cell="pp"][data-k="0"]');
+    const dcp = page.locator('input[data-bh="0"][data-cell="dcp"][data-k="0"]');
+    await pp.fill('>450');   await expect(pp).not.toHaveAttribute('aria-invalid', 'true');
+    await pp.fill('lots');   await expect(pp).toHaveAttribute('aria-invalid', 'true');
+    await dcp.fill('15 R');  await expect(dcp).not.toHaveAttribute('aria-invalid', 'true');
+    await dcp.fill('15 Rs'); await expect(dcp).toHaveAttribute('aria-invalid', 'true');
+    await page.fill('input[data-bh="0"][data-f="depth"]', '1,2');
+    await expect(page.locator('input[data-bh="0"][data-f="depth"]')).toHaveAttribute('aria-invalid', 'true');
+    expect(await page.evaluate(() => report().boreholes[0].depth), 'still stored').toBe('1,2');
+    await expect(page.locator('input[data-bh="0"][data-layer="0"][data-f="desc"], input[data-bh="0"][data-newlayer="0"][data-f="desc"]').first()).toHaveAttribute('maxlength', '120');
+  });
+
   test('info icons open a panel on tap and say the description is the engineer\'s', async ({ page }) => {
     await newReport(page, 'classification');
     await gotoTab(page, 'Boreholes');
