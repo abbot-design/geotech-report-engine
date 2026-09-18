@@ -132,6 +132,13 @@ all token pairs; photo inputs have text alternatives via captions.
 - All state lives in one `db` object (`id → report`); rendering is stateless from it.
 - Section templates are plain functions in `TPL`; add a section by adding to `SECTIONS` + `TPL`
   + (optionally) `requirements()`.
+- **Field logs follow AS 1726:2017 through one vocabulary object, `AS1726`.** It feeds the class list, the
+  composed layer description (clause 6.1.3 order) and the Appendix C legend, so a log cannot print an
+  abbreviation the legend does not define. Readings (`pp[]`, `dcp[]` on a borehole, `blows[]` on a DCP
+  test) are stored every 100 mm — index *k* is the interval *k*×0.1 to (*k*+1)×0.1 m — and printed every
+  300 mm: blows sum, pocket penetrometer readings are listed. Row data appears in Appendix C only; the
+  body carries counts and one-line summaries. A hole or test saved before readings existed prints as it
+  always did. `tests/fixtures/fieldwork-sample.json` exercises every branch.
 - The report document is built in `buildReport()` — one function, straight from state, so the
   preview and the PDF can never disagree with the entered data.
 - Escaping: all user text passes through `esc()`/`nl()` before entering the DOM.
